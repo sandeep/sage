@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sankey v5: Forensic Alignment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .sankey-node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .sankey-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .dimmed { opacity: 0.05 !important; }
+        .highlighted { opacity: 0.8 !important; }
+        
+        .color-equity { stroke: #10b981; fill: #10b981; }
+        .color-bond { stroke: #f59e0b; fill: #f59e0b; }
+        .color-cash { stroke: #3b82f6; fill: #3b82f6; }
+        .color-option { stroke: #6366f1; fill: #6366f1; }
+        .node-account { fill: #52525b; }
+        .node-account.active { fill: #fff; stroke: #10b981; stroke-width: 2px; }
+    </style>
+</head>
+<body class="p-12 space-y-12">
+    <!-- Header -->
+    <div class="flex justify-between items-baseline border-b border-zinc-900 pb-6">
+        <div class="text-3xl font-black uppercase tracking-tighter italic">
+            <span class="text-emerald-500">FORENSIC</span> ALIGNMENT
+        </div>
+        <div class="text-[10px] text-zinc-500 uppercase font-black tracking-widest italic">Labels repositioned for high-density reconciliation</div>
+    </div>
+
+    <!-- The Final Mockup -->
+    <div class="space-y-6">
+        <div class="bg-zinc-950/50 border border-zinc-900 rounded-sm p-24 shadow-2xl relative">
+            <svg width="100%" height="500" viewBox="0 0 1000 500" class="overflow-visible" id="sankey-svg">
+                <!-- Column Labels -->
+                <text x="150" y="-30" class="text-[10px] fill-zinc-600 uppercase font-black tracking-widest text-right" text-anchor="end">Accounts</text>
+                <text x="850" y="-30" class="text-[10px] fill-zinc-600 uppercase font-black tracking-widest text-left">Holdings</text>
+
+                <!-- LINKS (Account -> Ticker) -->
+                <path d="M 162 100 C 500 100, 500 80, 838 80" data-account="acc-1" class="sankey-link color-equity opacity-20" stroke-width="60" fill="none" />
+                <path d="M 162 200 C 500 200, 500 300, 838 300" data-account="acc-1" class="sankey-link color-bond opacity-20" stroke-width="40" fill="none" />
+                
+                <path d="M 162 350 C 500 350, 500 150, 838 150" data-account="acc-2" class="sankey-link color-equity opacity-20" stroke-width="30" fill="none" />
+                <path d="M 162 430 C 500 430, 500 450, 838 450" data-account="acc-2" class="sankey-link color-cash opacity-20" stroke-width="50" fill="none" />
+
+                <!-- ACCOUNT NODES (LEFT - Label on the Left) -->
+                <g class="sankey-node" onclick="focusAccount('acc-1', 'Rollover IRA', 139326)">
+                    <rect x="150" y="50" width="12" height="250" class="node-account" id="node-acc-1" />
+                    <text x="140" y="175" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter text-right" text-anchor="end">Rollover IRA</text>
+                    <text x="140" y="190" class="text-[9px] fill-emerald-500 font-bold text-right" text-anchor="end">$139,326</text>
+                </g>
+
+                <g class="sankey-node" onclick="focusAccount('acc-2', 'Traditional IRA', 85412)">
+                    <rect x="150" y="320" width="12" height="150" class="node-account" id="node-acc-2" />
+                    <text x="140" y="390" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter text-right" text-anchor="end">Traditional IRA</text>
+                    <text x="140" y="405" class="text-[9px] fill-emerald-500 font-bold text-right" text-anchor="end">$85,412</text>
+                </g>
+
+                <!-- TICKER NODES (RIGHT) -->
+                <!-- FZROX -->
+                <g class="sankey-node" id="ticker-fzrox">
+                    <rect x="838" y="50" width="12" height="60" class="color-equity" />
+                    <!-- Contribution Label (Left of bar) -->
+                    <text x="828" y="85" class="text-[9px] fill-emerald-400 font-black text-right contrib-val opacity-0" text-anchor="end">$0</text>
+                    <!-- Ticker Label (Right of bar) -->
+                    <text x="858" y="80" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter">FZROX</text>
+                    <!-- Total Label (Right of bar) -->
+                    <text x="858" y="95" class="text-[9px] fill-zinc-500 font-bold" data-full="$139k">$139k (Total)</text>
+                </g>
+
+                <!-- FSPSX -->
+                <g class="sankey-node" id="ticker-fspsx">
+                    <rect x="838" y="130" width="12" height="40" class="color-equity" />
+                    <text x="828" y="155" class="text-[9px] fill-emerald-400 font-black text-right contrib-val opacity-0" text-anchor="end">$0</text>
+                    <text x="858" y="150" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter">FSPSX</text>
+                    <text x="858" y="165" class="text-[9px] fill-zinc-500 font-bold" data-full="$50k">$50k (Total)</text>
+                </g>
+
+                <!-- FXNAX -->
+                <g class="sankey-node" id="ticker-fxnax">
+                    <rect x="838" y="280" width="12" height="40" class="color-bond" />
+                    <text x="828" y="305" class="text-[9px] fill-emerald-400 font-black text-right contrib-val opacity-0" text-anchor="end">$0</text>
+                    <text x="858" y="300" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter">FXNAX</text>
+                    <text x="858" y="315" class="text-[9px] fill-zinc-500 font-bold" data-full="$40k">$40k (Total)</text>
+                </g>
+
+                <!-- CASH -->
+                <g class="sankey-node" id="ticker-cash">
+                    <rect x="838" y="420" width="12" height="60" class="color-cash" />
+                    <text x="828" y="455" class="text-[9px] fill-emerald-400 font-black text-right contrib-val opacity-0" text-anchor="end">$0</text>
+                    <text x="858" y="450" class="text-xs fill-zinc-100 font-black uppercase tracking-tighter">CASH</text>
+                    <text x="858" y="465" class="text-[9px] fill-zinc-500 font-bold" data-full="$110k">$110k (Total)</text>
+                </g>
+            </svg>
+
+            <!-- FOOTER RECONCILIATION -->
+            <div id="footer-recon" class="mt-16 pt-8 border-t border-zinc-900 flex justify-between items-center opacity-0 transition-all">
+                <div class="flex items-center gap-10">
+                    <div class="space-y-1">
+                        <div class="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Account Target</div>
+                        <div id="recon-acc-total" class="text-lg font-black text-white">$0.00</div>
+                    </div>
+                    <div class="text-zinc-800 font-black text-xl">→</div>
+                    <div class="space-y-1">
+                        <div class="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Sum of Links</div>
+                        <div id="recon-instr-total" class="text-lg font-black text-emerald-500">$0.00</div>
+                    </div>
+                </div>
+                <button onclick="resetFocus()" class="px-6 py-2 border border-zinc-800 text-[9px] font-black uppercase tracking-widest hover:bg-zinc-900 transition-colors">
+                    Reset View ↺
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            'acc-1': { instr: { 'fzrox': 100000, 'fxnax': 39326 }, total: 139326 },
+            'acc-2': { instr: { 'fspsx': 50000, 'cash': 35412 }, total: 85412 }
+        };
+
+        function focusAccount(id, name, total) {
+            document.querySelectorAll('.node-account').forEach(n => n.classList.remove('active'));
+            document.getElementById('node-' + id).classList.add('active');
+
+            document.querySelectorAll('.sankey-link').forEach(l => {
+                if (l.getAttribute('data-account') === id) {
+                    l.classList.remove('dimmed');
+                    l.classList.add('highlighted');
+                } else {
+                    l.classList.add('dimmed');
+                    l.classList.remove('highlighted');
+                }
+            });
+
+            // Update Instrument Contribution Values (Left of bar)
+            const accData = data[id];
+            
+            ['fzrox', 'fspsx', 'fxnax', 'cash'].forEach(tKey => {
+                const val = accData.instr[tKey];
+                const el = document.getElementById('ticker-' + tKey).querySelector('.contrib-val');
+                if (val) {
+                    el.innerText = '$' + val.toLocaleString();
+                    el.classList.remove('opacity-0');
+                } else {
+                    el.innerText = '$0';
+                    el.classList.add('opacity-0');
+                }
+            });
+
+            const footer = document.getElementById('footer-recon');
+            footer.classList.remove('opacity-0');
+            document.getElementById('recon-acc-total').innerText = '$' + total.toLocaleString();
+            
+            const instrSum = Object.values(accData.instr).reduce((a, b) => a + b, 0);
+            document.getElementById('recon-instr-total').innerText = '$' + instrSum.toLocaleString();
+        }
+
+        function resetFocus() {
+            document.querySelectorAll('.node-account').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.sankey-link').forEach(l => {
+                l.classList.remove('dimmed');
+                l.classList.remove('highlighted');
+            });
+            document.querySelectorAll('.contrib-val').forEach(v => {
+                v.classList.add('opacity-0');
+            });
+            document.getElementById('footer-recon').classList.add('opacity-0');
+        }
+    </script>
+</body>
+</html>

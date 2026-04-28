@@ -1,0 +1,68 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# worktrees
+.worktrees/
+
+# Sage data and directives
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+/sage/
+.worktrees/
+src/lib/data/bootstrap_accounts.json
+authorized_keys
+test_*.db*
+AAAA-32a0dca0-7359-5675-9efa-629ca2c43781.csv
+
+# Tool Slop
+.playwright-mcp/
+.playwright/
+dev.log
+sage.db.backup_*
+debug_alpha_metrics.ts
+
+# AI Tooling & Session State
+.superpowers/
+.gemini/
+.claude/
+
+# Data & Debug Cleanup
+Backtest-Portfolio-returns-rev25b.xlsx
+test_fidelity.csv
+debug_meta.js
+dump_schema.js

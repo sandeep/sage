@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  /* Core Foundation */
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent: #10b981; /* Emerald-500 */
+  --risk: #f43f5e;   /* Rose-500 */
+  --border: #18181b;
+  --card: #09090b;
+  
+  /* Forensic Grays (High Contrast) */
+  --zinc-truth: #d4d4d8; /* Zinc-300 */
+  --zinc-meta: #71717a;  /* Zinc-500 */
+  --zinc-dim: #3f3f46;   /* Zinc-700 */
+  --zinc-faint: #18181b; /* Zinc-900 */
+
+  /* Asset Class Tokens */
+  --yield: #f59e0b;      /* Amber-500 */
+  --liquidity: #3b82f6;  /* Blue-500 */
+  --derivative: #6366f1; /* Indigo-500 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-risk: var(--risk);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  
+  --color-truth: var(--zinc-truth);
+  --color-meta: var(--zinc-meta);
+  --color-zinc-dim: var(--zinc-dim);
+  --color-zinc-faint: var(--zinc-faint);
+
+  --color-yield: var(--yield);
+  --color-liquidity: var(--liquidity);
+  --color-derivative: var(--derivative);
+
+  --font-mono: "JetBrains Mono", "Geist Mono", "Fira Code", ui-monospace, monospace;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --tracking-tighter: -0.05em;
+  --tracking-widest: 0.3em;
+
+  /* ────────────────────────────────────────────
+     SAGE MODULAR SCALE - REFINED
+     ──────────────────────────────────────────── */
+  --text-ui-hero: 2rem;        /* 32px - Page Titles */
+  --text-ui-header: 1.125rem;  /* 18px - Section Headers */
+  --text-ui-data: 1.25rem;     /* 20px - Large Metrics */
+  --text-ui-label: 11px;       /* 11px - Labels & Nav Groups */
+  --text-ui-caption: 10px;     /* 10px - Muted Metadata */
+  --text-ui-body: 13px;        /* 13px - Table Data */
+}
+
+@utility text-ui-hero {
+  font-size: var(--text-ui-hero);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-style: italic;
+  letter-spacing: var(--tracking-tighter);
+  line-height: 1;
+  font-family: var(--font-mono);
+}
+
+@utility text-ui-header {
+  font-size: var(--text-ui-header);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  font-family: var(--font-mono);
+}
+
+@utility text-ui-data {
+  font-size: var(--text-ui-data);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-family: var(--font-mono);
+}
+
+@utility text-ui-label {
+  font-size: var(--text-ui-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--zinc-truth);
+  font-family: var(--font-mono);
+}
+
+@utility text-ui-caption {
+  font-size: var(--text-ui-caption);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--zinc-meta);
+  font-family: var(--font-mono);
+}
+
+@utility text-ui-body {
+  font-size: var(--text-ui-body);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--zinc-truth);
+  line-height: 1.4;
+}
+
+/* UI Aliases for Legacy Components */
+.ui-hero { @apply text-ui-hero; }
+.ui-header { @apply text-ui-header; }
+.ui-metric { @apply text-ui-data; }
+.ui-label { @apply text-ui-label; }
+.ui-caption { @apply text-ui-caption; }
+.ui-value { @apply text-ui-body; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+/* Design System Helpers */
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  padding: 2rem;
+  border-radius: 2px;
+}
+
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 4rem 2.5rem;
+}
+
+/* ────────────────────────────────────────────
+   SAGE LAYOUT PATTERNS (Option B - Dense)
+   ──────────────────────────────────────────── */
+
+.ui-page-spacing {
+  @apply space-y-16 py-12;
+}
+
+.ui-section-header {
+  @apply flex justify-between items-baseline border-b border-zinc-900 pb-4 mb-8;
+}
+
+.ui-section-header h2 {
+  @apply text-ui-header text-white uppercase tracking-widest;
+}
+
+.ui-section-header span {
+  @apply text-ui-caption text-zinc-700 uppercase;
+}
+
+.ui-metric-grid {
+  @apply grid gap-4;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #27272a; }

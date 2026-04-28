@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symmetric Dual-Portfolio IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .nav-link {
+            @apply px-6 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b-2 border-transparent transition-all hover:text-white;
+        }
+        .nav-link.active {
+            @apply text-emerald-500 border-emerald-500 bg-emerald-500/5;
+        }
+        .sub-nav-link {
+            @apply px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-600 hover:text-white transition-all border border-transparent hover:border-zinc-800;
+        }
+        .sub-nav-link.active {
+            @apply text-zinc-200 border-zinc-800 bg-zinc-900/50;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- TOP NAVIGATION -->
+    <nav class="border-b border-zinc-900 bg-black sticky top-0 z-50">
+        <div class="flex items-center justify-between px-12">
+            <div class="flex items-center gap-12">
+                <div class="text-xl font-black tracking-tighter italic mr-8">SAGE <span class="text-emerald-500">v2.0</span></div>
+                
+                <div class="flex">
+                    <a href="#" class="nav-link active">Portfolio (Passive)</a>
+                    <a href="#" class="nav-link">Alpha (Active)</a>
+                    <a href="#" class="nav-link">System</a>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Live Engine</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- SUB NAVIGATION / TOOLBAR -->
+    <div class="bg-zinc-950/50 border-b border-zinc-900 px-12 py-3 flex justify-between items-center">
+        <div class="flex gap-2">
+            <a href="#" class="sub-nav-link active">Overview</a>
+            <a href="#" class="sub-nav-link">Performance</a>
+        </div>
+        
+        <button class="px-6 py-1.5 bg-emerald-600/10 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-[0.2em] hover:bg-emerald-500 hover:text-white transition-all rounded-sm">
+            Sync Data
+        </button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 p-12 space-y-24">
+        
+        <!-- SECTION 1: METRICS -->
+        <section class="space-y-12">
+            <div class="grid grid-cols-4 gap-8">
+                <div class="border border-zinc-900 p-8 rounded-sm bg-zinc-950/50">
+                    <div class="text-[9px] text-zinc-600 font-black uppercase mb-4">Total Wealth</div>
+                    <div class="text-3xl font-black tracking-tighter">$1,245,092</div>
+                </div>
+                <!-- ... more tiles ... -->
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE SANKEY (First Class Citizen) -->
+        <section class="space-y-8">
+            <div class="flex justify-between items-baseline border-b border-zinc-900 pb-4">
+                <h2 class="text-xs font-black uppercase tracking-widest text-zinc-500">Capital Flow Topology</h2>
+                <span class="text-[9px] text-zinc-700 uppercase font-black">Interactive Account-to-Asset Mapping</span>
+            </div>
+            <div class="h-[500px] border border-dashed border-zinc-900 rounded-sm flex items-center justify-center text-zinc-800 text-[10px] font-black uppercase tracking-[0.5em]">
+                Full Visual Proof of Ownership
+            </div>
+        </section>
+
+        <!-- SECTION 3: REBALANCER MOVES -->
+        <section class="space-y-8">
+            <div class="flex justify-between items-baseline border-b border-zinc-900 pb-4">
+                <h2 class="text-xs font-black uppercase tracking-widest text-zinc-500">Next Moves</h2>
+            </div>
+            <div class="h-48 border border-zinc-900 rounded-sm bg-zinc-950/20"></div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER HELP -->
+    <div class="fixed bottom-8 right-8 text-[8px] text-zinc-800 uppercase font-black tracking-widest">
+        Symmetric Architecture: [ Pillar ] -> [ Overview | Performance | Sync ]
+    </div>
+</body>
+</html>

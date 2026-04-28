@@ -1,0 +1,41 @@
+{
+  "Stock": {
+    "weight": 0.98,
+    "categories": {
+      "US Stock": {
+        "weight": 0.68,
+        "subcategories": {
+          "US Large Cap/SP500/DJIX": { "weight": 0.20, "expected_return": 0.075 },
+          "Total Stock Market": { "weight": 0.20, "expected_return": 0.08 },
+          "Small Cap Value": { "weight": 0.10, "expected_return": 0.105 },
+          "Non Big (Ext Market/Small Blend)": { "weight": 0.05, "expected_return": 0.09 },
+          "REIT": { "weight": 0.08, "expected_return": 0.085 },
+          "Healthcare": { "weight": 0.05, "expected_return": 0.07 },
+          "Mid-Cap": { "weight": 0.00, "expected_return": 0.085 },
+          "Small-Cap": { "weight": 0.00, "expected_return": 0.09 },
+          "Energy": { "weight": 0.00, "expected_return": 0.065 }
+        }
+      },
+      "Intl'l Stock": {
+        "weight": 0.30,
+        "subcategories": {
+          "Emerging Market": { "weight": 0.15, "expected_return": 0.095 },
+          "Developed Market": { "weight": 0.15, "expected_return": 0.075 },
+          "Int'l Small Cap": { "weight": 0.00, "expected_return": 0.085 },
+          "Int'l Value": { "weight": 0.00, "expected_return": 0.08 },
+          "Total Int'l Stock Market": { "weight": 0.00, "expected_return": 0.075 }
+        }
+      }
+    }
+  },
+  "Bond": {
+    "weight": 0.02,
+    "categories": {
+      "US Aggregate Bond": { "weight": 0.02, "expected_return": 0.045 }
+    }
+  },
+  "Cash": {
+    "weight": 0.00,
+    "expected_return": 0.02
+  }
+}

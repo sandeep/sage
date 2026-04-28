@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAGE v2.0 - High Fidelity IA Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .nav-link {
+            @apply flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all rounded-sm cursor-pointer;
+        }
+        .nav-link.active {
+            @apply text-zinc-100 bg-zinc-900;
+        }
+        .console-switch {
+            @apply flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 border-b border-zinc-900 transition-all hover:text-zinc-300 cursor-pointer text-center;
+        }
+        .console-switch.active {
+            @apply text-emerald-500 border-emerald-500 bg-emerald-500/5;
+        }
+        .console-switch.active-alpha {
+            @apply text-indigo-500 border-indigo-500 bg-indigo-500/5;
+        }
+        
+        /* Realistic Component Styles */
+        .metric-row { @apply grid grid-cols-4 gap-4 px-6 py-3 border-b border-zinc-900/50 text-xs; }
+        .metric-header { @apply text-[10px] font-black text-zinc-600 uppercase tracking-widest px-6 py-3 border-b border-zinc-900 bg-zinc-900/50; }
+        
+        /* Modal Styles */
+        #sync-modal {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- 1. THE CONSOLE SIDEBAR -->
+    <aside class="w-64 border-r border-zinc-900 flex flex-col bg-black z-10 flex-shrink-0">
+        <!-- Brand -->
+        <div class="p-8 border-b border-zinc-900">
+            <h1 class="text-2xl font-black tracking-tighter italic">SAGE <span class="text-emerald-500 text-sm">v2.0</span></h1>
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="flex">
+            <div id="btn-portfolio" class="console-switch active" onclick="setMode('portfolio')">Portfolio</div>
+            <div id="btn-alpha" class="console-switch" onclick="setMode('alpha')">Alpha</div>
+        </div>
+
+        <!-- Navigation Contexts -->
+        <nav class="flex-1 p-4 overflow-y-auto">
+            
+            <!-- PORTFOLIO NAV -->
+            <div id="nav-portfolio" class="space-y-1">
+                <div class="px-4 py-2 text-[9px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-2">Passive Engine</div>
+                <div class="nav-link active" onclick="setView('portfolio-overview', this)">Overview</div>
+                <div class="nav-link" onclick="setView('portfolio-performance', this)">Performance</div>
+            </div>
+
+            <!-- ALPHA NAV -->
+            <div id="nav-alpha" class="space-y-1 hidden">
+                <div class="px-4 py-2 text-[9px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-2">Active Engine</div>
+                <div class="nav-link active" onclick="setView('alpha-trades', this)">Trade Log</div>
+                <div class="nav-link" onclick="setView('alpha-performance', this)">Performance</div>
+            </div>
+
+            <!-- SETTINGS NAV (Always visible at bottom of scroll) -->
+            <div class="mt-12 border-t border-zinc-900 pt-6 space-y-1">
+                <div class="px-4 py-2 text-[9px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-2">System Config</div>
+                <div class="nav-link !text-[10px]" onclick="setView('settings-allocation', this)">Target Allocation</div>
+                <div class="nav-link !text-[10px]" onclick="setView('settings-accounts', this)">Accounts</div>
+                <div class="nav-link !text-[10px]" onclick="setView('settings-snapshots', this)">Snapshots</div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- 2. MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-black relative">
+        
+        <!-- HEADER ACTION BAR -->
+        <header class="h-16 border-b border-zinc-900 flex items-center justify-between px-12 flex-shrink-0 bg-black z-10">
+            <div id="header-title" class="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
+                Portfolio / Overview
+            </div>
+            
+            <!-- Contextual Sync Button -->
+            <button onclick="openSync()" id="sync-btn" class="px-6 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all rounded-sm flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Sync Fidelity Data
+            </button>
+        </header>
+
+        <!-- SCROLLABLE VIEWS -->
+        <main class="flex-1 overflow-y-auto p-12">
+            <div class="max-w-7xl mx-auto space-y-16 pb-24">
+
+                <!-- ========================================== -->
+                <!-- VIEW: PORTFOLIO OVERVIEW -->
+                <!-- ========================================== -->
+                <div id="view-portfolio-overview" class="view-section space-y-16">
+                    
+                    <!-- 1. Metrics Grid (Realistic layout) -->
+                    <section class="border border-zinc-900 rounded-sm bg-zinc-950/50 shadow-2xl">
+                        <div class="grid grid-cols-4 gap-4 px-6 py-4 border-b border-zinc-900 text-xs font-black uppercase tracking-widest text-zinc-500">
+                            <div>Category</div>
+                            <div class="text-right">Actual ($/%)</div>
+                            <div class="text-right">Target</div>
+                            <div class="text-right">Drift</div>
+                        </div>
+                        <div class="divide-y divide-zinc-900/50">
+                            <div class="metric-row items-center hover:bg-zinc-900/20">
+                                <div class="font-bold text-white flex items-center gap-2">▼ Total Portfolio</div>
+                                <div class="text-right text-zinc-300">$1,245,092 (100%)</div>
+                                <div class="text-right text-zinc-500">100%</div>
+                                <div class="text-right text-zinc-500">0.0%</div>
+                            </div>
+                            <div class="metric-row items-center hover:bg-zinc-900/20 pl-10">
+                                <div class="font-bold text-zinc-300">▼ Stocks</div>
+                                <div class="text-right text-zinc-400">$1,049,612 (84.3%)</div>
+                                <div class="text-right text-zinc-500">98.0%</div>
+                                <div class="text-right text-rose-500 font-black">-13.7%</div>
+                            </div>
+                            <div class="metric-row items-center hover:bg-zinc-900/20 pl-16">
+                                <div class="text-zinc-400">Total Stock Market</div>
+                                <div class="text-right text-zinc-500">$540,320 (43.4%)</div>
+                                <div class="text-right text-zinc-500">20.0%</div>
+                                <div class="text-right text-emerald-500 font-black">+23.4%</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. Exposure Audit -->
+                    <section class="space-y-6">
+                        <div class="flex justify-between items-baseline border-b border-zinc-900 pb-2">
+                            <h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Exposure Audit</h2>
+                        </div>
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
+                                <div class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-4">Concentration Risk</div>
+                                <div class="flex items-center gap-4 text-xs font-mono text-rose-400">
+                                    <span class="px-2 py-1 bg-rose-500/10 border border-rose-500/20">AAPL (12.4%)</span>
+                                    <span>Exceeds 5% threshold</span>
+                                </div>
+                            </div>
+                            <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
+                                <div class="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-4">Expense Risk</div>
+                                <div class="text-xs font-mono text-zinc-500 italic">No funds exceed 0.25% ER</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 3. Capital Flow Sankey -->
+                    <section class="space-y-6">
+                        <div class="flex justify-between items-baseline border-b border-zinc-900 pb-2">
+                            <h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Forensic Capital Flow</h2>
+                            <span class="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Account-to-Asset Topology</span>
+                        </div>
+                        <div class="h-[400px] bg-zinc-950/50 border border-zinc-900 rounded-sm flex items-center justify-center relative">
+                            <!-- Visual mock of Sankey structure -->
+                            <div class="absolute left-10 top-10 bottom-10 w-4 bg-zinc-800 rounded-sm"></div>
+                            <div class="absolute left-10 top-1/2 -translate-y-1/2 -translate-x-full pr-4 text-[10px] font-bold text-zinc-400 text-right">Rollover IRA<br>$139k</div>
+                            
+                            <svg class="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none">
+                                <path d="M 60 200 C 400 200, 400 100, 800 100" stroke="#10b981" stroke-width="40" fill="none"/>
+                            </svg>
+
+                            <div class="absolute right-10 top-10 h-24 w-4 bg-emerald-500 rounded-sm"></div>
+                            <div class="absolute right-10 top-16 translate-x-full pl-4 text-[10px] font-bold text-zinc-400">FZROX<br>$139k</div>
+                        </div>
+                    </section>
+
+                    <!-- 4. Next Moves (Rebalancer) -->
+                    <section class="space-y-6">
+                        <div class="flex justify-between items-baseline border-b border-zinc-900 pb-2">
+                            <h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Execution Directives</h2>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden">
+                            <div class="p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/20">
+                                <span class="text-xs font-black text-white">TRADITIONAL IRA</span>
+                            </div>
+                            <div class="p-6 flex items-center justify-between">
+                                <div class="text-xs font-mono text-zinc-300">Buy <span class="text-emerald-400 font-black">$4,200</span> of <span class="font-black">FSPSX</span> (Developed Market)</div>
+                                <div class="flex gap-2">
+                                    <button class="px-4 py-1.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-sm">Accept</button>
+                                    <button class="px-4 py-1.5 border border-zinc-700 text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded-sm">Snooze</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- VIEW: ALPHA TRADE LOG -->
+                <!-- ========================================== -->
+                <div id="view-alpha-trades" class="view-section hidden space-y-12">
+                    
+                    <!-- Alpha Top Stats -->
+                    <div class="grid grid-cols-5 gap-6">
+                        <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm text-center">
+                            <div class="text-[9px] text-zinc-600 uppercase font-black mb-2">Win Rate</div>
+                            <div class="text-xl font-black">52.6%</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm text-center">
+                            <div class="text-[9px] text-zinc-600 uppercase font-black mb-2">Avg Win</div>
+                            <div class="text-xl font-black text-emerald-400">$4,547</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm text-center">
+                            <div class="text-[9px] text-zinc-600 uppercase font-black mb-2">Avg Loss</div>
+                            <div class="text-xl font-black text-rose-400">$5,638</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm text-center">
+                            <div class="text-[9px] text-zinc-600 uppercase font-black mb-2">Profit Factor</div>
+                            <div class="text-xl font-black">0.90</div>
+                        </div>
+                        <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm text-center">
+                            <div class="text-[9px] text-zinc-600 uppercase font-black mb-2">Expectancy</div>
+                            <div class="text-xl font-black text-rose-400">-$280</div>
+                        </div>
+                    </div>
+
+                    <!-- Trade Table -->
+                    <div class="border border-zinc-900 rounded-sm bg-zinc-950 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-zinc-900/50 border-b border-zinc-900 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                                <tr>
+                                    <th class="px-6 py-3">Date</th>
+                                    <th class="px-6 py-3">Instrument</th>
+                                    <th class="px-6 py-3">Dir</th>
+                                    <th class="px-6 py-3 text-right">P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-900/50 text-xs font-mono text-zinc-300">
+                                <tr class="hover:bg-zinc-900/20">
+                                    <td class="px-6 py-4">2026-03-27</td>
+                                    <td class="px-6 py-4 font-bold">Futures Sweep</td>
+                                    <td class="px-6 py-4"><span class="text-[9px] px-2 py-0.5 bg-rose-500/10 text-rose-500 rounded-sm">LOSS</span></td>
+                                    <td class="px-6 py-4 text-right text-rose-500 font-black">-$7,446.46</td>
+                                </tr>
+                                <tr class="hover:bg-zinc-900/20">
+                                    <td class="px-6 py-4">2026-03-25</td>
+                                    <td class="px-6 py-4 font-bold">Futures Sweep</td>
+                                    <td class="px-6 py-4"><span class="text-[9px] px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-sm">GAIN</span></td>
+                                    <td class="px-6 py-4 text-right text-emerald-400 font-black">+$5,948.54</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- VIEW: SETTINGS ALLOCATION -->
+                <!-- ========================================== -->
+                <div id="view-settings-allocation" class="view-section hidden space-y-6">
+                    <div class="flex justify-between items-baseline border-b border-zinc-900 pb-4">
+                        <h2 class="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Target Allocation Editor</h2>
+                    </div>
+                    <div class="bg-zinc-950 border border-zinc-900 p-8 rounded-sm font-mono text-xs text-zinc-400 flex items-center justify-center h-64">
+                        [ Allocation Sliders & JSON Editor ]
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- OVERLAY: THE INGEST MODAL -->
+    <!-- ========================================== -->
+    <div id="sync-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="bg-zinc-950 border border-zinc-800 rounded-sm w-[600px] shadow-2xl flex flex-col">
+            
+            <div class="p-6 border-b border-zinc-900 flex justify-between items-center">
+                <div class="text-xs font-black uppercase tracking-widest text-white">Sync Portfolio Data</div>
+                <button onclick="closeSync()" class="text-zinc-500 hover:text-white">✕</button>
+            </div>
+
+            <!-- STEP 1: DROPZONE -->
+            <div id="sync-step-1" class="p-12 flex flex-col items-center justify-center border-2 border-dashed border-zinc-800 m-8 bg-zinc-900/20 hover:border-emerald-500 hover:bg-emerald-500/5 cursor-pointer transition-all" onclick="mockParse()">
+                <div class="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                </div>
+                <div class="text-xs font-black uppercase tracking-[0.2em] text-zinc-300">Drop Fidelity CSV</div>
+                <div class="text-[9px] text-zinc-600 uppercase font-black tracking-widest mt-2">(Click to simulate parse)</div>
+            </div>
+
+            <!-- STEP 2: RECONCILIATION -->
+            <div id="sync-step-2" class="hidden flex-col">
+                <div class="p-8 space-y-4 bg-zinc-900/20 border-b border-zinc-900">
+                    <div class="flex justify-between items-center bg-black border border-zinc-800 p-4 rounded-sm">
+                        <div>
+                            <div class="text-xs font-black text-white">ROLLOVER IRA</div>
+                            <div class="text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-1">37 Assets Detected</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-black text-emerald-400 font-mono">$139,326.88</div>
+                            <div class="text-[8px] font-black text-emerald-500/50 uppercase tracking-[0.2em]">CSV Total</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 flex justify-end gap-4 bg-zinc-950">
+                    <button onclick="closeSync()" class="px-6 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white">Cancel</button>
+                    <button onclick="closeSync()" class="px-8 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 rounded-sm">Save to Ledger</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- UI Logic -->
+    <script>
+        // Console Switcher
+        function setMode(mode) {
+            // Update Buttons
+            document.getElementById('btn-portfolio').className = `console-switch ${mode === 'portfolio' ? 'active' : ''}`;
+            document.getElementById('btn-alpha').className = `console-switch ${mode === 'alpha' ? 'active-alpha' : ''}`;
+            
+            // Toggle Nav Menus
+            document.getElementById('nav-portfolio').classList.toggle('hidden', mode !== 'portfolio');
+            document.getElementById('nav-alpha').classList.toggle('hidden', mode !== 'alpha');
+
+            // Update Header Sync Button
+            const syncBtn = document.getElementById('sync-btn');
+            if (mode === 'portfolio') {
+                syncBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Sync Fidelity Data`;
+                syncBtn.className = "px-6 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all rounded-sm flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+                // Default view for portfolio
+                document.querySelector('#nav-portfolio .nav-link').click();
+            } else {
+                syncBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Sync Robinhood Data`;
+                syncBtn.className = "px-6 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all rounded-sm flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
+                // Default view for alpha
+                document.querySelector('#nav-alpha .nav-link').click();
+            }
+        }
+
+        // View Router
+        function setView(viewId, el) {
+            // Update Active Nav Link
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+
+            // Hide all views, show target
+            document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden'));
+            const target = document.getElementById('view-' + viewId);
+            if (target) target.classList.remove('hidden');
+
+            // Update Header Title
+            const titles = {
+                'portfolio-overview': 'Portfolio / Overview',
+                'portfolio-performance': 'Portfolio / Performance',
+                'alpha-trades': 'Alpha / Trade Log',
+                'alpha-performance': 'Alpha / Performance',
+                'settings-allocation': 'System / Target Allocation',
+                'settings-accounts': 'System / Accounts',
+                'settings-snapshots': 'System / Snapshots'
+            };
+            document.getElementById('header-title').innerText = titles[viewId];
+        }
+
+        // Modal Logic
+        function openSync() {
+            document.getElementById('sync-modal').classList.remove('hidden');
+            document.getElementById('sync-step-1').classList.remove('hidden');
+            document.getElementById('sync-step-1').classList.add('flex');
+            document.getElementById('sync-step-2').classList.add('hidden');
+            document.getElementById('sync-step-2').classList.remove('flex');
+        }
+
+        function closeSync() {
+            document.getElementById('sync-modal').classList.add('hidden');
+        }
+
+        function mockParse() {
+            document.getElementById('sync-step-1').classList.add('hidden');
+            document.getElementById('sync-step-1').classList.remove('flex');
+            document.getElementById('sync-step-2').classList.remove('hidden');
+            document.getElementById('sync-step-2').classList.add('flex');
+        }
+    </script>
+</body>
+</html>

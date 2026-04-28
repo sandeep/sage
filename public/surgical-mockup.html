@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surgical Forensic IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .text-ui-label { @apply text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500; }
+        .text-ui-value { @apply text-2xl font-black tracking-tighter; }
+        .forensic-border { @apply border border-zinc-900; }
+    </style>
+</head>
+<body class="p-12 space-y-24">
+    <!-- 1. HEADER (Minimalist) -->
+    <div class="flex justify-between items-end border-b border-zinc-900 pb-8">
+        <div>
+            <h1 class="text-2xl font-black tracking-tighter italic">SAGE <span class="text-emerald-500">v2.0</span></h1>
+        </div>
+        <div class="flex gap-8">
+            <button class="text-[10px] font-black text-emerald-500 hover:text-emerald-400 tracking-widest uppercase">[ INGEST_DATA ]</button>
+            <button class="text-[10px] font-black text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">/ REFRESH</button>
+        </div>
+    </div>
+
+    <!-- 2. DASHBOARD CONTENT (Active Mode: Reconciliation) -->
+    <div class="space-y-12">
+        <div class="flex justify-between items-baseline border-b border-zinc-900 pb-4">
+            <h2 class="text-xs font-black uppercase tracking-widest text-emerald-500 italic">Forensic Ingest Mode</h2>
+            <span class="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Verify 1:1 Totals before Ledger Commitment</span>
+        </div>
+
+        <!-- THE SPOT-CHECK TABLE (The ONLY thing the user needs) -->
+        <div class="bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-zinc-900/50 border-b border-zinc-900">
+                        <th class="px-8 py-4 text-ui-label">Account Detected</th>
+                        <th class="px-8 py-4 text-ui-label text-center">Assets</th>
+                        <th class="px-8 py-4 text-ui-label text-right">Market Value</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-900">
+                    <tr>
+                        <td class="px-8 py-6 text-xs font-black text-zinc-200">ROLLOVER IRA (...1213)</td>
+                        <td class="px-8 py-6 text-xs font-mono text-zinc-500 text-center">37</td>
+                        <td class="px-8 py-6 text-lg font-black text-white text-right">$139,326.88</td>
+                    </tr>
+                    <tr>
+                        <td class="px-8 py-6 text-xs font-black text-zinc-200">TRADITIONAL IRA (...5652)</td>
+                        <td class="px-8 py-6 text-xs font-mono text-zinc-500 text-center">4</td>
+                        <td class="px-8 py-6 text-lg font-black text-white text-right">$85,412.11</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-between items-center">
+            <button class="text-[10px] font-black text-zinc-600 uppercase hover:text-zinc-400 transition-colors">← Exit Mode</button>
+            <button class="px-16 py-4 bg-emerald-600 text-white text-xs font-black uppercase tracking-[0.3em] hover:bg-emerald-500 transition-all shadow-[0_0_40px_rgba(16,185,129,0.2)] rounded-sm">
+                Commit to Ledger
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. REBALANCER (Dimmed in Ingest Mode) -->
+    <div class="opacity-10 pointer-events-none space-y-10">
+        <div class="h-px bg-zinc-900 w-full"></div>
+        <div class="text-ui-label">Directives Queue</div>
+        <div class="h-48 bg-zinc-900/20 forensic-border rounded-sm"></div>
+    </div>
+
+    <!-- 4. SANKEY (The Standalone Footer) -->
+    <div class="space-y-10 pt-12">
+        <div class="flex justify-between items-baseline border-b border-zinc-900 pb-4">
+            <h2 class="text-xs font-black uppercase tracking-widest text-zinc-500">Forensic Capital Flow</h2>
+            <span class="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Global Account-to-Asset Mapping</span>
+        </div>
+        <div class="h-[500px] bg-zinc-950/20 border-dashed border border-zinc-900 rounded-sm flex items-center justify-center">
+            <div class="text-[10px] text-zinc-800 font-black uppercase tracking-[0.5em]">Interactive Sankey visualization lives here permanently</div>
+        </div>
+    </div>
+</body>
+</html>
