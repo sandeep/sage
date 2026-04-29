@@ -22,9 +22,9 @@ export default async function ActiveAlpha({ searchParams }: Props) {
         endDate = `${year}-12-31`;
     }
 
-    const metrics = await calculateAlphaMetrics(startDate, endDate);
-    const bookStats = await getBookTradeStats(startDate, endDate);
-    const alphaNavSeries = await getAlphaNavSeries(startDate, endDate);
+    const metrics = await calculateAlphaMetrics();
+    const bookStats = await getBookTradeStats();
+    const alphaNavSeries = await getAlphaNavSeries();
     const shadowVtiSeries = await getShadowVtiSeries(); 
 
     // Align series for the chart
