@@ -15,15 +15,7 @@ export async function getDashboardData() {
   const efficiency = calculatePortfolioEfficiency();
   const evolution = getStrategyEvolution();
   
-  const allDirectives = db.prepare("SELECT * FROM directives").all() as Array<{ 
-    id: number, 
-    type: string, 
-    description: string, 
-    priority: 'LOW' | 'MEDIUM' | 'HIGH', 
-    status: 'PENDING' | 'ACCEPTED' | 'SNOOZED' | 'EXECUTED', 
-    reasoning: string, 
-    link_key: string 
-  }>;
+  const allDirectives = db.prepare("SELECT * FROM directives").all() as Directive[];
 
   // Fetch Topology Data for Forensic Sankey
   const accounts = db.prepare('SELECT id, nickname as name FROM accounts').all() as any[];
