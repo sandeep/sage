@@ -192,7 +192,7 @@ export async function getComparisonData(tab: string) {
         years: p.years,
         vti: vtiMetrics ? computeCrisisDrawdown(vtiMetrics.annualReturns, p.years, true) : null,
         target: targetMetrics ? computeCrisisDrawdown(targetMetrics.annualReturns, p.years) : null,
-        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.actualReturns || actualMetrics.annualReturns, p.years) : null,
+        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.annualReturns, p.years) : null,
     }));
 
     return {
