@@ -9,7 +9,7 @@ import { mapIslands, solveIslands } from './rebalance/islandEngine';
 const ENGINE_VERSION: 'v1' | 'v2' = 'v2';
 
 export interface Directive {
-    id?: number;
+    id: number;
     type: 'SELL' | 'BUY' | 'REBALANCE' | 'OPTIMIZATION' | 'PLACEMENT';
     description: string;
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
