@@ -20,8 +20,8 @@ export interface Directive {
     account_id?: string;
     asset_class?: string;
     scheduled_date?: string;
-    tranche_index?: number;
-    tranche_total?: number;
+    tranche_index: number;
+    tranche_total: number;
     amount?: number;  // raw dollar amount for display
 }
 
