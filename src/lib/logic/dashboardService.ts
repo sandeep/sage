@@ -2,7 +2,7 @@
 import db from '../db/client';
 import { calculateHierarchicalMetrics } from './xray';
 import { getConcentrationRisks, getExpenseRisks } from './xray_risks';
-import { generateDirectives } from './rebalancer';
+import { generateDirectives, Directive } from './rebalancer';
 import { calculatePortfolioEfficiency } from './efficiency';
 import { getStrategyEvolution } from './strategyEvolution';
 
