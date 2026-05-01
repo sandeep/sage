@@ -2,11 +2,11 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { Directive as LogicDirective, DirectiveStatus } from '@/lib/logic/rebalancer';
+import { Directive as LogicDirective, PersistedDirective } from '@/lib/logic/rebalancer';
 
-interface Directive extends LogicDirective {
-    id: number;
-    status: DirectiveStatus;
+interface Directive extends PersistedDirective {
+
+
 }
 
 const TYPE_COLORS: Record<string, string> = {

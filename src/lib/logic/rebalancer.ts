@@ -11,20 +11,25 @@ const ENGINE_VERSION: 'v1' | 'v2' = 'v2';
 export type DirectiveStatus = 'PENDING' | 'ACCEPTED' | 'SNOOZED' | 'EXECUTED';
 
 export interface Directive {
-    id: number;
+    id?: number;
     type: 'SELL' | 'BUY' | 'REBALANCE' | 'OPTIMIZATION' | 'PLACEMENT';
     description: string;
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
     reasoning: string;
     link_key: string;
-    status: DirectiveStatus;
+    status?: DirectiveStatus;
     // V2 fields
     account_id?: string;
     asset_class?: string;
     scheduled_date?: string;
     tranche_index: number;
     tranche_total: number;
-    amount?: number;  // raw dollar amount for display
+    amount?: number;
+}
+
+export interface PersistedDirective extends Directive {
+    id: number;
+    status: DirectiveStatus;  // raw dollar amount for display
 }
 
 export async function generateDirectives(): Promise<number> {
