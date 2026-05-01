@@ -7,7 +7,7 @@ interface Directive {
     type: string;
     description: string;
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
-    status: 'PENDING' | 'ACCEPTED' | 'SNOOZED' | 'EXECUTED';
+    status: DirectiveStatus;
     reasoning: string;
     link_key: string;
     tranche_index: number;
