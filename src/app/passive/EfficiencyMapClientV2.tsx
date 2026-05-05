@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ScatterChart,
     Scatter,
@@ -10,6 +10,7 @@ import {
     ResponsiveContainer,
     Cell,
     LabelList,
+    ReferenceLine
 } from 'recharts';
 import { Coordinates } from '@/lib/types/audit';
 
@@ -43,21 +44,7 @@ const findOptimalReturnAtRisk = (points: { vol: number, return: number }[], targ
     return best.return;
 };
 
-const findOptimalRiskAtReturn = (points: { vol: number, return: number }[], targetReturn: number) => {
-    if (!points || points.length === 0) return 0;
-    let best = points[0];
-    let minDist = Math.abs(best.return - targetReturn);
-    points.forEach(p => {
-        const dist = Math.abs(p.return - targetReturn);
-        if (dist < minDist) {
-            minDist = dist;
-            best = p;
-        }
-    });
-    return best.vol;
-};
-
-const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?: boolean; payload?: any[]; localPoints: any[]; globalPoints: any[] }) => {
+const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: boolean; payload?: any[]; localPoints: any[]; targetVol: number }) => {
     if (active && payload && payload.length) {
         const d = payload[0].payload;
         const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -68,20 +55,23 @@ const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?
             const optimalReturn = findOptimalReturnAtRisk(localPoints, d.vol);
             const returnDrag = d.return - optimalReturn; // Delta Y
             
-            const optimalRisk = findOptimalRiskAtReturn(localPoints, d.return);
-            const riskDrag = d.vol - optimalRisk; // Delta X
+            const riskDrag = d.vol - targetVol; // Delta X
             
             // Only show if drag is meaningful
             if (Math.abs(returnDrag) > 0.001 || Math.abs(riskDrag) > 0.001) {
                 dragSection = (
                     <div className="pt-2 mt-2 border-t border-zinc-800 space-y-2">
                         <div>
-                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider">Return Drag (ΔY)</div>
-                            <div className="text-amber-500 font-bold">{toPct(returnDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalReturn)} opt.</span></div>
+                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider flex items-center gap-1">
+                                <span className="w-2 h-[2px] bg-amber-500 inline-block" /> Return Drag (ΔY)
+                            </div>
+                            <div className="text-amber-500 font-bold">{toPct(returnDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalReturn)} ceiling</span></div>
                         </div>
                         <div>
-                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider">Risk Excess (ΔX)</div>
-                            <div className="text-rose-500 font-bold">+{toPct(Math.max(0, riskDrag))} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalRisk)} opt.</span></div>
+                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider flex items-center gap-1">
+                                <span className="w-2 h-[2px] bg-rose-500 inline-block" /> Risk Excess (ΔX)
+                            </div>
+                            <div className="text-rose-500 font-bold">{(riskDrag > 0 ? '+' : '')}{toPct(riskDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(targetVol)} target</span></div>
                         </div>
                     </div>
                 );
@@ -104,7 +94,8 @@ const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?
 };
 
 export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, frontierPoints, globalFrontierPoints }: Props) {
-    const [mounted, setMounted] = React.useState(false);
+    const [mounted, setMounted] = useState(false);
+    const [hoveredDot, setHoveredDot] = useState<any>(null);
     React.useEffect(() => setMounted(true), []);
 
     const data = useMemo(() => [
@@ -155,12 +146,42 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-24">
             <div className="xl:col-span-2 aspect-video min-h-[500px] relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 60, right: 60, bottom: 40, left: 0 }}>
+                    <ScatterChart 
+                        margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
+                        onMouseMove={(e: any) => {
+                            if (e && e.activePayload && e.activePayload.length > 0) {
+                                setHoveredDot(e.activePayload[0].payload);
+                            } else {
+                                setHoveredDot(null);
+                            }
+                        }}
+                        onMouseLeave={() => setHoveredDot(null)}
+                    >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
                         <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
-                        <Tooltip content={<CustomTooltip localPoints={frontierPoints.points} globalPoints={globalFrontierPoints.points} />} cursor={{ strokeDasharray: '3 3' }} />
+                        <Tooltip cursor={false} content={<CustomTooltip localPoints={frontierPoints.points} targetVol={coordinates.target.vol} />} />
                         
+                        {/* Delta X and Y Reference Lines */}
+                        {hoveredDot && !hoveredDot.isCurve && !hoveredDot.isGlobal && (
+                            <>
+                                {/* Delta Y Line: from dot to efficient frontier at same Vol */}
+                                <ReferenceLine 
+                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: hoveredDot.vol, y: findOptimalReturnAtRisk(frontierPoints.points, hoveredDot.vol) }]} 
+                                    stroke="#f59e0b" // amber-500
+                                    strokeWidth={2}
+                                    strokeDasharray="4 4" 
+                                />
+                                {/* Delta X Line: from dot to target vol at same Return */}
+                                <ReferenceLine 
+                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: coordinates.target.vol, y: hoveredDot.return }]} 
+                                    stroke="#f43f5e" // rose-500
+                                    strokeWidth={2}
+                                    strokeDasharray="4 4" 
+                                />
+                            </>
+                        )}
+
                         {/* Opportunity Cloud (Local) */}
                         <Scatter 
                             name="Local Opportunity Set" 
