@@ -47,6 +47,9 @@ export interface AuditReport {
         points: Array<{ vol: number; return: number; isCurve: boolean }>;
         cloud: Array<{ vol: number; return: number; isCurve: boolean }>;
     };
+    globalFrontierPoints: {
+        points: Array<{ vol: number; return: number; isCurve: boolean }>;
+    };
     taxIssues: any[];
     feeRisks: any[];
     concentrationRisks: any[];

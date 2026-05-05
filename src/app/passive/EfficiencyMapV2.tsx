@@ -8,6 +8,7 @@ export default async function EfficiencyMapV2() {
     const report = await generateAuditReport();
     const coordinates = report.coordinates;
     const frontierPoints = report.frontierPoints;
+    const globalFrontierPoints = report.globalFrontierPoints;
     const snapshotTrail = getSnapshotTrail();
 
     return (
@@ -20,6 +21,7 @@ export default async function EfficiencyMapV2() {
                 coordinates={coordinates} 
                 snapshotTrail={snapshotTrail} 
                 frontierPoints={frontierPoints}
+                globalFrontierPoints={globalFrontierPoints}
             />
         </section>
     );
