@@ -40,13 +40,13 @@ def optimize():
         # Institutional Fix: Our data is ALREADY annualized (Simba).
         # We must set frequency=1 to prevent double-compounding.
         mu = expected_returns.return_model(returns_df, method="mean_historical_return", returns_data=True, frequency=1)
-        S = risk_models.risk_matrix(returns_df, method="ledoit_wolf", returns_data=True, frequency=1)
+        # Use sample_cov to mathematically align with the TypeScript naive standard deviation used for plotting coordinates
+        S = risk_models.risk_matrix(returns_df, method="sample_cov", returns_data=True, frequency=1)
 
         points = []
         
         # 1. Global Minimum Variance (GMV) Portfolio
         ef_min = EfficientFrontier(mu, S)
-        ef_min.add_objective(objective_functions.L2_reg, gamma=0.1) # Penalize concentration
         try:
             weights_min = ef_min.min_volatility()
             ret_min, vol_min, _ = ef_min.portfolio_performance()
@@ -62,7 +62,6 @@ def optimize():
             target_returns = np.linspace(min_ret, max_ret, 30)
             for target in target_returns:
                 ef = EfficientFrontier(mu, S)
-                ef.add_objective(objective_functions.L2_reg, gamma=0.1) # Penalize concentration
                 try:
                     ef.efficient_return(target)
                     ret, vol, _ = ef.portfolio_performance()

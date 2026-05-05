@@ -89,6 +89,20 @@ export async function generateAuditReport(): Promise<AuditReport> {
     // ── 3. FULL HISTORY (Simba Proxy - Basis for Frontier Chart) ──────────────
     const portFull = calculateHistoricalProxyReturns(currentWeights, 50);
     const targetFull = calculateHistoricalProxyReturns(targetWeightsFlat, 50);
+    
+    // Mathematically align volatility with the MVO solver (exactly 50 years sample std dev)
+    const stdDev = (arr: number[]) => {
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return Math.sqrt(arr.reduce((a, v) => a + Math.pow(v - mean, 2), 0) / arr.length);
+    };
+
+    const portFullVol = stdDev(portFull.annualReturns);
+    const targetFullVol = stdDev(targetFull.annualReturns);
+    
+    // We need VTI returns for the exact same 50 years to align Market dot
+    const vtiRet50 = portFull.years.map(y => (simbaData as any).asset_classes['VTI']?.returns[y] ?? (simbaData as any).asset_classes['TSM']?.returns[y] ?? 0);
+    const vtiFullVol = stdDev(vtiRet50);
+
     horizons.push({
         horizon: 'FULL HISTORY',
         isProxy: true,
@@ -109,9 +123,9 @@ export async function generateAuditReport(): Promise<AuditReport> {
     });
 
     const coordinates = {
-        vti: { label: 'Market (VTI)', return: portFull.marketReturn, vol: portFull.marketVol },
-        target: { label: 'Strategy (Target)', return: targetFull.annualizedReturn, vol: targetFull.volatility },
-        actual: { label: 'Portfolio (Actual)', return: portFull.annualizedReturn, vol: portFull.volatility }
+        vti: { label: 'Market (VTI)', return: portFull.marketReturn, vol: vtiFullVol },
+        target: { label: 'Strategy (Target)', return: targetFull.annualizedReturn, vol: targetFullVol },
+        actual: { label: 'Portfolio (Actual)', return: portFull.annualizedReturn, vol: portFullVol }
     };
 
     const simbaClasses = (simbaData as any).asset_classes;
