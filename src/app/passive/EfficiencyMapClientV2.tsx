@@ -29,7 +29,7 @@ interface Props {
     };
 }
 
-const findNearestReturn = (points: { vol: number, return: number }[], targetVol: number) => {
+const findOptimalReturnAtRisk = (points: { vol: number, return: number }[], targetVol: number) => {
     if (!points || points.length === 0) return 0;
     let best = points[0];
     let minDist = Math.abs(best.vol - targetVol);
@@ -43,6 +43,20 @@ const findNearestReturn = (points: { vol: number, return: number }[], targetVol:
     return best.return;
 };
 
+const findOptimalRiskAtReturn = (points: { vol: number, return: number }[], targetReturn: number) => {
+    if (!points || points.length === 0) return 0;
+    let best = points[0];
+    let minDist = Math.abs(best.return - targetReturn);
+    points.forEach(p => {
+        const dist = Math.abs(p.return - targetReturn);
+        if (dist < minDist) {
+            minDist = dist;
+            best = p;
+        }
+    });
+    return best.vol;
+};
+
 const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?: boolean; payload?: any[]; localPoints: any[]; globalPoints: any[] }) => {
     if (active && payload && payload.length) {
         const d = payload[0].payload;
@@ -51,15 +65,24 @@ const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?
         
         let dragSection = null;
         if (!d.isCurve && !d.isGlobal) {
-            const optimalReturn = findNearestReturn(localPoints, d.vol);
-            const drag = optimalReturn - d.return;
+            const optimalReturn = findOptimalReturnAtRisk(localPoints, d.vol);
+            const returnDrag = d.return - optimalReturn; // Delta Y
             
-            // Only show if drag is meaningful (> 0.1%)
-            if (drag > 0.001) {
+            const optimalRisk = findOptimalRiskAtReturn(localPoints, d.return);
+            const riskDrag = d.vol - optimalRisk; // Delta X
+            
+            // Only show if drag is meaningful
+            if (Math.abs(returnDrag) > 0.001 || Math.abs(riskDrag) > 0.001) {
                 dragSection = (
-                    <div className="pt-2 mt-2 border-t border-zinc-800 space-y-1">
-                        <div className="text-zinc-500">Optimal Return: <span className="text-emerald-500">{toPct(optimalReturn)}</span></div>
-                        <div className="text-zinc-500">Efficiency Drag: <span className="text-amber-500">-{toPct(drag)}</span></div>
+                    <div className="pt-2 mt-2 border-t border-zinc-800 space-y-2">
+                        <div>
+                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider">Return Drag (ΔY)</div>
+                            <div className="text-amber-500 font-bold">{toPct(returnDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalReturn)} opt.</span></div>
+                        </div>
+                        <div>
+                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider">Risk Excess (ΔX)</div>
+                            <div className="text-rose-500 font-bold">+{toPct(Math.max(0, riskDrag))} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalRisk)} opt.</span></div>
+                        </div>
                     </div>
                 );
             }
@@ -105,23 +128,9 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
     [snapshotTrail]);
 
     // Error Decomposition Math
-    const findNearestReturn = (points: { vol: number, return: number }[], targetVol: number) => {
-        if (!points || points.length === 0) return 0;
-        let best = points[0];
-        let minDist = Math.abs(best.vol - targetVol);
-        points.forEach(p => {
-            const dist = Math.abs(p.vol - targetVol);
-            if (dist < minDist) {
-                minDist = dist;
-                best = p;
-            }
-        });
-        return best.return;
-    };
-
     const actualVol = coordinates.actual.vol;
-    const localCeiling = findNearestReturn(frontierPoints.points, actualVol);
-    const globalCeiling = findNearestReturn(globalFrontierPoints.points, actualVol);
+    const localCeiling = findOptimalReturnAtRisk(frontierPoints.points, actualVol);
+    const globalCeiling = findOptimalReturnAtRisk(globalFrontierPoints.points, actualVol);
 
     const executionError = localCeiling - coordinates.actual.return;
     const selectionError = globalCeiling - localCeiling;
