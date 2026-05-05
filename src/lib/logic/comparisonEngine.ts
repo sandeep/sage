@@ -192,7 +192,7 @@ export async function getComparisonData(tab: string) {
         years: p.years,
         vti: vtiMetrics ? computeCrisisDrawdown(vtiMetrics.annualReturns, p.years, true) : null,
         target: targetMetrics ? computeCrisisDrawdown(targetMetrics.annualReturns, p.years) : null,
-        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.actualReturns || actualMetrics.annualReturns, p.years) : null,
+        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.annualReturns, p.years) : null,
     }));
 
     return {
@@ -204,3 +204,56 @@ export async function getComparisonData(tab: string) {
         dataNote: "Simba-based metrics are for full-history cycle analysis (60-year trailing window).",
     };
 }
+
+/** 
+ * Re-implementing low-level helpers missing from recent refactors 
+ * to support the Recent performance comparison API.
+ */
+
+export function fetchPriceHistory(tickers: string[], start: string, end: string): Record<string, Record<string, number>> {
+    const out: Record<string, Record<string, number>> = {};
+    for (const ticker of tickers) {
+        const rows = db.prepare("SELECT date, close FROM price_history WHERE ticker = ? AND date >= ? AND date <= ? ORDER BY date").all(ticker, start, end) as any[];
+        const map: Record<string, number> = {};
+        rows.forEach(r => map[r.date] = r.close);
+        out[ticker] = map;
+    }
+    return out;
+}
+
+export function buildActualPortfolioNAV(start: string, end: string): { dates: string[], nav: number[] } | null {
+    const allDates = (db.prepare("SELECT DISTINCT date FROM price_history WHERE date >= ? AND date <= ? ORDER BY date ASC").all(start, end) as { date: string }[]).map(r => r.date);
+    if (allDates.length < 2) return null;
+
+    // Use current holdings as a static snapshot for historical simulation
+    const strategyRows = db.prepare('SELECT category, weight FROM strategy').all() as { category: string, weight: number }[];
+    const strategicWeights = Object.fromEntries(strategyRows.map(r => [r.category, r.weight]));
+    
+    // For "Actual", we use calculateHistoricalProxyReturns to get the series
+    const sim = calculateHistoricalProxyReturns(getPortfolioWeights(), 0, allDates.map(d => parseInt(d.substring(0, 4))));
+    
+    if (!sim || sim.series.length === 0) return null;
+    
+    return {
+        dates: sim.series.map(s => s.date),
+        nav: sim.series.map(s => s.value)
+    };
+}
+
+export function buildNavSeries(
+    vtiDates: string[], 
+    vtiPrices: number[], 
+    targetSim: any, 
+    actualNAV: any, 
+    proposedSim: any
+): any[] {
+    const vtiStart = vtiPrices[0] || 1;
+    return vtiDates.map((date, i) => ({
+        t: date,
+        vti: (vtiPrices[i] / vtiStart) * 100,
+        target: targetSim && targetSim.series[i] ? (targetSim.series[i].value || 1) * 100 : null,
+        actual: actualNAV && actualNAV.nav[i] ? (actualNAV.nav[i] || 1) * 100 : null,
+        proposed: proposedSim && proposedSim.series[i] ? (proposedSim.series[i].value || 1) * 100 : null,
+    }));
+}
+
