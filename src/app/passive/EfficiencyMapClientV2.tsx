@@ -29,17 +29,48 @@ interface Props {
     };
 }
 
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+const findNearestReturn = (points: { vol: number, return: number }[], targetVol: number) => {
+    if (!points || points.length === 0) return 0;
+    let best = points[0];
+    let minDist = Math.abs(best.vol - targetVol);
+    points.forEach(p => {
+        const dist = Math.abs(p.vol - targetVol);
+        if (dist < minDist) {
+            minDist = dist;
+            best = p;
+        }
+    });
+    return best.return;
+};
+
+const CustomTooltip = ({ active, payload, localPoints, globalPoints }: { active?: boolean; payload?: any[]; localPoints: any[]; globalPoints: any[] }) => {
     if (active && payload && payload.length) {
         const d = payload[0].payload;
         const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
         const labelStr = d.label || (d.isGlobal ? 'Strategic Global Frontier' : (d.isCurve ? 'Local Portfolio Frontier' : (d.isTrail ? 'Historical Snapshot' : 'Simulated Portfolio')));
         
+        let dragSection = null;
+        if (!d.isCurve && !d.isGlobal) {
+            const optimalReturn = findNearestReturn(localPoints, d.vol);
+            const drag = optimalReturn - d.return;
+            
+            // Only show if drag is meaningful (> 0.1%)
+            if (drag > 0.001) {
+                dragSection = (
+                    <div className="pt-2 mt-2 border-t border-zinc-800 space-y-1">
+                        <div className="text-zinc-500">Optimal Return: <span className="text-emerald-500">{toPct(optimalReturn)}</span></div>
+                        <div className="text-zinc-500">Efficiency Drag: <span className="text-amber-500">-{toPct(drag)}</span></div>
+                    </div>
+                );
+            }
+        }
+
         return (
             <div className="bg-card border border-zinc-900/50 p-4 shadow-2xl font-mono text-[10px] space-y-2 relative z-50">
                 <div className="ui-label text-white border-b border-zinc-900/50 pb-1">{labelStr}</div>
                 <div className="text-truth">Return (CAGR): <span className="text-white">{toPct(d.return)}</span></div>
                 <div className="text-truth">Risk (Volatility): <span className="text-white">{toPct(d.vol)}</span></div>
+                {dragSection}
                 <div className="ui-caption mt-2 italic text-meta">
                     {d.isGlobal ? 'Market Ceiling' : d.isCurve ? 'Current Asset Ceiling' : d.isTrail ? 'Historical State' : 'Asset Mix Variation'}
                 </div>
@@ -119,7 +150,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
                         <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+                        <Tooltip content={<CustomTooltip localPoints={frontierPoints.points} globalPoints={globalFrontierPoints.points} />} cursor={{ strokeDasharray: '3 3' }} />
                         
                         {/* Opportunity Cloud (Local) */}
                         <Scatter 
