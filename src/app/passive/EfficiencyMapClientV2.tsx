@@ -148,41 +148,12 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
                         margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
-                        onMouseMove={(e: any) => {
-                            if (e && e.activePayload && e.activePayload.length > 0) {
-                                setHoveredDot(e.activePayload[0].payload);
-                            } else {
-                                setHoveredDot(null);
-                            }
-                        }}
-                        onMouseLeave={() => setHoveredDot(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
                         <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
                         <Tooltip cursor={false} content={<CustomTooltip localPoints={frontierPoints.points} targetVol={coordinates.target.vol} />} />
                         
-                        {/* Delta X and Y Reference Lines */}
-                        {hoveredDot && !hoveredDot.isCurve && !hoveredDot.isGlobal && (
-                            <>
-                                {/* Delta Y Line: from dot to efficient frontier at same Vol */}
-                                <ReferenceLine 
-                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: hoveredDot.vol, y: findOptimalReturnAtRisk(frontierPoints.points, hoveredDot.vol) }]} 
-                                    stroke="#f59e0b" // amber-500
-                                    strokeWidth={2}
-                                    strokeDasharray="4 4" 
-                                />
-                                {/* Delta X Line: from dot to target vol at same Return */}
-                                <ReferenceLine 
-                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: coordinates.target.vol, y: hoveredDot.return }]} 
-                                    stroke="#f43f5e" // rose-500
-                                    strokeWidth={2}
-                                    strokeDasharray="4 4" 
-                                />
-                            </>
-                        )}
-
-                        {/* Opportunity Cloud (Local) */}
                         <Scatter 
                             name="Local Opportunity Set" 
                             data={frontierPoints.cloud} 
@@ -212,19 +183,55 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
 
+                        {/* Delta X and Y Reference Lines - Moved before Scatters to ensure they stay behind if needed, but Recharts layers by order. 
+                            Actually, we want them on top, so we keep them here or after. */}
+                        {hoveredDot && (
+                            <>
+                                <ReferenceLine 
+                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: hoveredDot.vol, y: findOptimalReturnAtRisk(frontierPoints.points, hoveredDot.vol) }]} 
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    strokeDasharray="4 4" 
+                                    style={{ pointerEvents: 'none' }}
+                                />
+                                <ReferenceLine 
+                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: coordinates.target.vol, y: hoveredDot.return }]} 
+                                    stroke="#f43f5e"
+                                    strokeWidth={2}
+                                    strokeDasharray="4 4" 
+                                    style={{ pointerEvents: 'none' }}
+                                />
+                            </>
+                        )}
+
                         <Scatter name="Portfolios" data={data} isAnimationActive={false}>
                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={index === 1 ? 4 : 0} stroke={entry.fill} strokeOpacity={0.2} />
+                                <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={entry.fill} 
+                                    strokeWidth={index === 1 ? 4 : 0} 
+                                    stroke={entry.fill} 
+                                    strokeOpacity={0.2} 
+                                    onMouseEnter={() => setHoveredDot(entry)}
+                                    onMouseLeave={() => setHoveredDot(null)}
+                                />
                             ))}
                         </Scatter>
+
                         {trailData.length > 0 && (
                             <Scatter
                                 name="Snapshots"
                                 data={trailData}
                                 isAnimationActive={false}
                             >
-                                {trailData.map((_, index) => (
-                                    <Cell key={`trail-${index}`} fill="#f59e0b" fillOpacity={0.7} />
+                                {trailData.map((entry, index) => (
+                                    <Cell 
+                                        key={`trail-${index}`} 
+                                        fill="#f59e0b" 
+                                        fillOpacity={0.7} 
+                                        onMouseEnter={() => setHoveredDot(entry)}
+                                        onMouseLeave={() => setHoveredDot(null)}
+                                    />
                                 ))}
                             </Scatter>
                         )}
