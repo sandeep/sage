@@ -129,8 +129,9 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     <ScatterChart 
                         margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
                         onMouseMove={(e: any) => {
-                            if (e && e.activePayload && e.activePayload.length > 0) {
+                            if (e?.activePayload?.length > 0) {
                                 const p = e.activePayload[0].payload;
+                                console.log('Chart Hover Payload:', p);
                                 // Enable vectors for portfolios, snapshots, and simulated points
                                 // Only exclude the frontier lines themselves to keep the UI focused
                                 if (!p.isCurve && !p.isGlobal) {
@@ -142,7 +143,10 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                 setHoveredPoint(null);
                             }
                         }}
-                        onMouseLeave={() => setHoveredPoint(null)}
+                        onMouseLeave={() => {
+                            console.log('Chart Hover Exit');
+                            setHoveredPoint(null);
+                        }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
