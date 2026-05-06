@@ -3,7 +3,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt import EfficientFrontier, risk_models, expected_returns, objective_functions
 
 def optimize():
     try:
@@ -22,19 +22,26 @@ def optimize():
 
         # Convert returns to DataFrame
         returns_df = pd.DataFrame(returns_dict)
-        if returns_df.empty:
-            print(json.dumps({"error": "Returns data is empty"}), file=sys.stderr)
-            return
+        
+        # ACADEMIC FIX: Drop assets with less than 10 years of data, then drop rows with any NaNs
+        # MVO requires a dense matrix.
+        returns_df = returns_df.dropna(thresh=10, axis=1)
+        returns_df = returns_df.dropna(axis=0)
+
+        if returns_df.empty or len(returns_df) < 5:
+            print(json.dumps({"error": "Insufficient overlapping historical data to compute covariance matrix."}), file=sys.stderr)
+            sys.exit(1)
 
         n_assets = len(returns_df.columns)
         if n_assets < 2:
-            print(json.dumps({"error": "At least two assets are required for optimization"}), file=sys.stderr)
-            return
+            print(json.dumps({"error": "At least two assets with overlapping data are required."}), file=sys.stderr)
+            sys.exit(1)
 
         # Institutional Fix: Our data is ALREADY annualized (Simba).
         # We must set frequency=1 to prevent double-compounding.
         mu = expected_returns.return_model(returns_df, method="mean_historical_return", returns_data=True, frequency=1)
-        S = risk_models.risk_matrix(returns_df, method="ledoit_wolf", returns_data=True, frequency=1)
+        # Use sample_cov to mathematically align with the TypeScript naive standard deviation used for plotting coordinates
+        S = risk_models.risk_matrix(returns_df, method="sample_cov", returns_data=True, frequency=1)
 
         points = []
         
@@ -49,15 +56,10 @@ def optimize():
 
         # 2. Efficient Frontier Points
         max_ret = mu.max()
-        min_ret = mu.min()
+        min_ret = ret_min if len(points) > 0 else mu.min()
         
-        if len(points) > 0:
-            start_ret = points[0]["return"]
-        else:
-            start_ret = min_ret
-
-        if max_ret > start_ret:
-            target_returns = np.linspace(start_ret, max_ret, 20)
+        if max_ret > min_ret:
+            target_returns = np.linspace(min_ret, max_ret, 30)
             for target in target_returns:
                 ef = EfficientFrontier(mu, S)
                 try:
@@ -67,10 +69,20 @@ def optimize():
                 except Exception:
                     continue
 
-        # 3. Opportunity Cloud (500 random portfolios)
+        # 3. Opportunity Cloud (2000 random portfolios for better density)
         cloud = []
-        for _ in range(500):
-            w = np.random.dirichlet(np.ones(n_assets), size=1)[0]
+        for i in range(2000):
+            # Mix standard Dirichlet (center-heavy) with exponential (boundary-heavy)
+            if i % 2 == 0:
+                w = np.random.dirichlet(np.ones(n_assets), size=1)[0]
+            else:
+                # Boundary sampling: force some assets to near-zero
+                raw_w = np.random.exponential(scale=1.0, size=n_assets)
+                mask = np.random.binomial(1, 0.5, size=n_assets)
+                w = raw_w * mask
+                if w.sum() == 0: w = np.ones(n_assets) # fallback
+                w = w / w.sum()
+                
             portfolio_return = np.dot(w, mu)
             portfolio_vol = np.sqrt(np.dot(w.T, np.dot(S, w)))
             cloud.append({

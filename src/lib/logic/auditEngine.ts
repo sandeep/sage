@@ -89,6 +89,20 @@ export async function generateAuditReport(): Promise<AuditReport> {
     // ── 3. FULL HISTORY (Simba Proxy - Basis for Frontier Chart) ──────────────
     const portFull = calculateHistoricalProxyReturns(currentWeights, 50);
     const targetFull = calculateHistoricalProxyReturns(targetWeightsFlat, 50);
+    
+    // Mathematically align volatility with the MVO solver (exactly 50 years sample std dev)
+    const stdDev = (arr: number[]) => {
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return Math.sqrt(arr.reduce((a, v) => a + Math.pow(v - mean, 2), 0) / arr.length);
+    };
+
+    const portFullVol = stdDev(portFull.annualReturns);
+    const targetFullVol = stdDev(targetFull.annualReturns);
+    
+    // We need VTI returns for the exact same 50 years to align Market dot
+    const vtiRet50 = portFull.years.map(y => (simbaData as any).asset_classes['VTI']?.returns[y] ?? (simbaData as any).asset_classes['TSM']?.returns[y] ?? 0);
+    const vtiFullVol = stdDev(vtiRet50);
+
     horizons.push({
         horizon: 'FULL HISTORY',
         isProxy: true,
@@ -109,9 +123,9 @@ export async function generateAuditReport(): Promise<AuditReport> {
     });
 
     const coordinates = {
-        vti: { label: 'Market (VTI)', return: portFull.marketReturn, vol: portFull.marketVol },
-        target: { label: 'Strategy (Target)', return: targetFull.annualizedReturn, vol: targetFull.volatility },
-        actual: { label: 'Portfolio (Actual)', return: portFull.annualizedReturn, vol: portFull.volatility }
+        vti: { label: 'Market (VTI)', return: portFull.marketReturn, vol: vtiFullVol },
+        target: { label: 'Strategy (Target)', return: targetFull.annualizedReturn, vol: targetFullVol },
+        actual: { label: 'Portfolio (Actual)', return: portFull.annualizedReturn, vol: portFullVol }
     };
 
     const simbaClasses = (simbaData as any).asset_classes;
@@ -132,50 +146,53 @@ export async function generateAuditReport(): Promise<AuditReport> {
     const strategyHistory = getStrategyEvolution();
 
     // --- 5. EFFICIENT FRONTIER MVO BRIDGE ---
-    const uniqueAssets = new Set<string>();
+    const GLOBAL_STRATEGIC_UNIVERSE = ['TSM', 'INTL', 'SCV', 'EM', 'REIT', 'ITT'];
+
+    const localAssets = new Set<string>();
     metrics?.forEach(m => {
         if (m.level === 2 || m.label === 'Cash') {
             const simbaClass = TICKER_TO_SIMBA[m.label.toUpperCase()] || LABEL_TO_SIMBA[m.label];
-            if (simbaClass && simbaClass !== 'Cash') uniqueAssets.add(simbaClass);
+            if (simbaClass && simbaClass !== 'Cash') localAssets.add(simbaClass);
         }
     });
     Object.keys(targetWeightsFlat).forEach(key => {
         const simbaClass = TICKER_TO_SIMBA[key.toUpperCase()] || LABEL_TO_SIMBA[key];
-        if (simbaClass && simbaClass !== 'Cash') uniqueAssets.add(simbaClass);
+        if (simbaClass && simbaClass !== 'Cash') localAssets.add(simbaClass);
     });
-
-    if (uniqueAssets.size === 0) uniqueAssets.add('TSM');
 
     const assetClasses = (simbaData as any).asset_classes;
     const availableYears = Object.keys(assetClasses.TSM.returns).sort((a, b) => parseInt(a) - parseInt(b));
     const targetYears = availableYears.slice(-50);
 
-    const returnMatrix: Record<string, number[]> = {};
-    uniqueAssets.forEach(asset => {
-        returnMatrix[asset] = targetYears.map(year => {
-            const cls = assetClasses[asset];
-            if (cls && cls.returns && cls.returns[year] !== undefined) return cls.returns[year];
-            if (['INTL', 'EM', 'SCV', 'REIT', 'LCB'].includes(asset)) return assetClasses['TSM']?.returns[year] ?? 0;
-            if (['ITT'].includes(asset)) return assetClasses['ITT']?.returns[year] ?? 0;
-            return 0;
+    async function getFrontier(universe: string[] | Set<string>) {
+        const returnMatrix: Record<string, number[]> = {};
+        universe.forEach(asset => {
+            returnMatrix[asset] = targetYears.map(year => {
+                const cls = assetClasses[asset];
+                if (cls && cls.returns && cls.returns[year] !== undefined) return cls.returns[year];
+                if (['INTL', 'EM', 'SCV', 'REIT', 'LCB'].includes(asset)) return assetClasses['TSM']?.returns[year] ?? 0;
+                if (['ITT'].includes(asset)) return assetClasses['ITT']?.returns[year] ?? 0;
+                return 0;
+            });
         });
-    });
 
-    const cacheHash = generateSimulationHash(returnMatrix, 'MVO_FRONTIER', TODAY_ANCHOR);
-    const cachedMVO = getCachedMVO(cacheHash);
+        const cacheHash = generateSimulationHash(returnMatrix, 'MVO_FRONTIER', TODAY_ANCHOR);
+        const cachedMVO = getCachedMVO(cacheHash);
 
-    let frontierPoints = { points: [] as any[], cloud: [] as any[] };
-    if (cachedMVO) {
-        frontierPoints = cachedMVO;
-    } else {
+        if (cachedMVO) return cachedMVO;
         try {
-            frontierPoints = await solveEfficientFrontier(returnMatrix);
-            saveCachedMVO(cacheHash, frontierPoints);
+            const result = await solveEfficientFrontier(returnMatrix);
+            saveCachedMVO(cacheHash, result);
+            return result;
         } catch (e) {
             console.error("MVO Bridge Failed:", e);
-            frontierPoints = { points: [{ vol: 0.15, return: 0.08, isCurve: true }], cloud: [] };
+            return { points: [{ vol: 0.15, return: 0.08, isCurve: true }], cloud: [] };
         }
     }
+
+    const frontierPoints = await getFrontier(localAssets.size > 0 ? localAssets : ['TSM']);
+    const globalFrontierData = await getFrontier(GLOBAL_STRATEGIC_UNIVERSE);
+    const globalFrontierPoints = { points: globalFrontierData.points };
 
     return {
         tv,
@@ -186,6 +203,7 @@ export async function generateAuditReport(): Promise<AuditReport> {
         leakageLedger: ledger,
         coordinates,
         frontierPoints, 
+        globalFrontierPoints,
         taxIssues,
         feeRisks,
         concentrationRisks,

@@ -2,18 +2,11 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface Directive {
-    id: number;
-    type: string;
-    description: string;
-    priority: 'LOW' | 'MEDIUM' | 'HIGH';
-    status: 'PENDING' | 'ACCEPTED' | 'SNOOZED' | 'EXECUTED';
-    reasoning: string;
-    link_key: string;
-    tranche_index: number;
-    tranche_total: number;
-    executed_at?: string;
-    created_at?: string;
+import { Directive as LogicDirective, PersistedDirective } from '@/lib/logic/rebalancer';
+
+interface Directive extends PersistedDirective {
+
+
 }
 
 const TYPE_COLORS: Record<string, string> = {
