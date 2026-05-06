@@ -9,7 +9,6 @@ import {
     Tooltip,
     ResponsiveContainer,
     Cell,
-    LabelList,
     ReferenceLine
 } from 'recharts';
 import { Coordinates } from '@/lib/types/audit';
@@ -53,11 +52,9 @@ const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: b
         let dragSection = null;
         if (!d.isCurve && !d.isGlobal) {
             const optimalReturn = findOptimalReturnAtRisk(localPoints, d.vol);
-            const returnDrag = d.return - optimalReturn; // Delta Y
+            const returnDrag = d.return - optimalReturn;
+            const riskDrag = d.vol - targetVol;
             
-            const riskDrag = d.vol - targetVol; // Delta X
-            
-            // Only show if drag is meaningful
             if (Math.abs(returnDrag) > 0.001 || Math.abs(riskDrag) > 0.001) {
                 dragSection = (
                     <div className="pt-2 mt-2 border-t border-zinc-800 space-y-2">
@@ -95,13 +92,14 @@ const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: b
 
 export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, frontierPoints, globalFrontierPoints }: Props) {
     const [mounted, setMounted] = useState(false);
-    const [hoveredDot, setHoveredDot] = useState<any>(null);
+    const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+    
     React.useEffect(() => setMounted(true), []);
 
     const data = useMemo(() => [
-        { ...coordinates.vti, label: 'Market (VTI)', fill: '#ffffff', size: 120, pos: 'right', off: 10 },
-        { ...coordinates.target, label: 'Strategy (Target)', fill: '#6366f1', size: 200, pos: 'top', off: 15 },
-        { ...coordinates.actual, label: 'Portfolio (Actual)', fill: '#fb7185', size: 150, pos: 'bottom', off: 15 },
+        { ...coordinates.vti, label: 'Market (VTI)', fill: '#ffffff', size: 120 },
+        { ...coordinates.target, label: 'Strategy (Target)', fill: '#6366f1', size: 200 },
+        { ...coordinates.actual, label: 'Portfolio (Actual)', fill: '#fb7185', size: 150 },
     ], [coordinates]);
 
     const trailData = useMemo(() =>
@@ -111,43 +109,38 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
             label: p.label ?? p.date.slice(0, 7),
             fill: '#f59e0b',
             size: 80,
-            isTrail: true,
-            index: i,
-            pos: 'top',
-            off: 8
+            isTrail: true
         })),
     [snapshotTrail]);
 
-    // Error Decomposition Math
     const actualVol = coordinates.actual.vol;
     const localCeiling = findOptimalReturnAtRisk(frontierPoints.points, actualVol);
     const globalCeiling = findOptimalReturnAtRisk(globalFrontierPoints.points, actualVol);
-
     const executionError = localCeiling - coordinates.actual.return;
     const selectionError = globalCeiling - localCeiling;
     const totalEfficiencyGap = globalCeiling - coordinates.actual.return;
 
-    if (!mounted) {
-        return (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-16">
-                <div className="xl:col-span-2 aspect-video min-h-[450px] bg-zinc-900/5 animate-pulse rounded-sm" />
-                <div className="space-y-12 animate-pulse">
-                    <div className="h-8 bg-zinc-900/10 rounded w-1/2" />
-                    <div className="space-y-4">
-                        <div className="h-20 bg-zinc-900/10 rounded" />
-                        <div className="h-20 bg-zinc-900/10 rounded" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    if (!mounted) return null;
 
     return (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-24">
-            <div className="xl:col-span-2 aspect-video min-h-[500px] relative z-10">
+            <div className="xl:col-span-2 aspect-video min-h-[500px] relative">
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
                         margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
+                        onMouseMove={(e: any) => {
+                            if (e && e.activePayload && e.activePayload.length > 0) {
+                                const p = e.activePayload[0].payload;
+                                if (p.label || p.isTrail) {
+                                    setHoveredPoint(p);
+                                } else {
+                                    setHoveredPoint(null);
+                                }
+                            } else {
+                                setHoveredPoint(null);
+                            }
+                        }}
+                        onMouseLeave={() => setHoveredPoint(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
@@ -163,7 +156,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
                         
-                        {/* Global Strategic Frontier */}
                         <Scatter 
                             name="Global Strategic Ceiling" 
                             data={globalFrontierPoints.points.map(p => ({ ...p, isGlobal: true }))} 
@@ -172,74 +164,75 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             shape={() => null}
                             isAnimationActive={false} 
                         />
-
-                        {/* Local Portfolio Frontier */}
                         <Scatter 
                             name="Local Portfolio Ceiling" 
-                            data={frontierPoints.points} 
+                            data={frontierPoints.points.map(p => ({ ...p, isCurve: true }))} 
                             fill="#10b981" 
                             line={{ stroke: '#10b981', strokeWidth: 2.5 }} 
                             shape={() => null}
                             isAnimationActive={false} 
                         />
 
-                        {/* Delta X and Y Reference Lines - Moved before Scatters to ensure they stay behind if needed, but Recharts layers by order. 
-                            Actually, we want them on top, so we keep them here or after. */}
-                        {hoveredDot && (
+                        {/* Static Delta Vectors for Portfolios - Higher reliability */}
+                        <Scatter
+                            isAnimationActive={false}
+                            data={[
+                                { vol: coordinates.actual.vol, return: coordinates.actual.return },
+                                { vol: coordinates.actual.vol, return: localCeiling }
+                            ]}
+                            line={{ stroke: '#f59e0b', strokeWidth: 3, strokeDasharray: '6 6' }}
+                            shape={() => null}
+                        />
+                        <Scatter
+                            isAnimationActive={false}
+                            data={[
+                                { vol: coordinates.target.vol, return: coordinates.actual.return },
+                                { vol: coordinates.actual.vol, return: coordinates.actual.return }
+                            ]}
+                            line={{ stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 6' }}
+                            shape={() => null}
+                        />
+
+                        {/* Interactive Delta Vectors for Hover */}
+                        {hoveredPoint && (
                             <>
-                                <ReferenceLine 
-                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: hoveredDot.vol, y: findOptimalReturnAtRisk(frontierPoints.points, hoveredDot.vol) }]} 
-                                    stroke="#f59e0b"
-                                    strokeWidth={2}
-                                    strokeDasharray="4 4" 
-                                    style={{ pointerEvents: 'none' }}
+                                <Scatter
+                                    isAnimationActive={false}
+                                    data={[
+                                        { vol: hoveredPoint.vol, return: hoveredPoint.return },
+                                        { vol: hoveredPoint.vol, return: findOptimalReturnAtRisk(frontierPoints.points, hoveredPoint.vol) }
+                                    ]}
+                                    line={{ stroke: '#f59e0b', strokeWidth: 4, strokeDasharray: '4 4' }}
+                                    shape={() => null}
                                 />
-                                <ReferenceLine 
-                                    segment={[{ x: hoveredDot.vol, y: hoveredDot.return }, { x: coordinates.target.vol, y: hoveredDot.return }]} 
-                                    stroke="#f43f5e"
-                                    strokeWidth={2}
-                                    strokeDasharray="4 4" 
-                                    style={{ pointerEvents: 'none' }}
+                                <Scatter
+                                    isAnimationActive={false}
+                                    data={[
+                                        { vol: coordinates.target.vol, return: hoveredPoint.return },
+                                        { vol: hoveredPoint.vol, return: hoveredPoint.return }
+                                    ]}
+                                    line={{ stroke: '#f43f5e', strokeWidth: 4, strokeDasharray: '4 4' }}
+                                    shape={() => null}
                                 />
                             </>
                         )}
 
-                        <Scatter name="Portfolios" data={data} isAnimationActive={false}>
-                            {data.map((entry, index) => (
-                                <Cell 
-                                    key={`cell-${index}`} 
-                                    fill={entry.fill} 
-                                    strokeWidth={index === 1 ? 4 : 0} 
-                                    stroke={entry.fill} 
-                                    strokeOpacity={0.2} 
-                                    onMouseEnter={() => setHoveredDot(entry)}
-                                    onMouseLeave={() => setHoveredDot(null)}
-                                />
+                        <Scatter name="Snapshots" data={trailData} isAnimationActive={false}>
+                            {trailData.map((entry, index) => (
+                                <Cell key={`trail-${index}`} fill="#f59e0b" fillOpacity={0.7} />
                             ))}
                         </Scatter>
 
-                        {trailData.length > 0 && (
-                            <Scatter
-                                name="Snapshots"
-                                data={trailData}
-                                isAnimationActive={false}
-                            >
-                                {trailData.map((entry, index) => (
-                                    <Cell 
-                                        key={`trail-${index}`} 
-                                        fill="#f59e0b" 
-                                        fillOpacity={0.7} 
-                                        onMouseEnter={() => setHoveredDot(entry)}
-                                        onMouseLeave={() => setHoveredDot(null)}
-                                    />
-                                ))}
-                            </Scatter>
-                        )}
+                        <Scatter name="Portfolios" data={data} isAnimationActive={false}>
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={index === 1 ? 4 : 0} stroke={entry.fill} strokeOpacity={0.2} />
+                            ))}
+                        </Scatter>
                     </ScatterChart>
                 </ResponsiveContainer>
                 
-                {/* Clean, Non-Colliding Legend */}
-                <div className="absolute top-2 left-2 flex flex-col gap-1 text-[8px] font-black uppercase tracking-[0.2em] bg-black/80 p-3 border border-zinc-900 rounded-sm">
+                {/* HUD Elements */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1 text-[8px] font-black uppercase tracking-[0.2em] bg-black/80 p-3 border border-zinc-900 rounded-sm pointer-events-none z-20">
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-white" /> 
                         <span className="text-zinc-400">Market (VTI)</span>
@@ -254,7 +247,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     </div>
                 </div>
 
-                <div className="absolute top-2 right-2 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 pr-4 pt-4 text-[8px] uppercase font-black tracking-widest">
+                <div className="absolute top-2 right-2 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 pr-4 pt-4 text-[8px] uppercase font-black tracking-widest pointer-events-none z-20">
                     <div className="flex items-center gap-2">
                         <span className="w-8 h-[1px] border-t-2 border-dashed border-zinc-600" />
                         Global Strategic Ceiling
@@ -272,7 +265,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     <div className="space-y-10">
                         <div className="space-y-2">
                             <div className="ui-caption text-risk font-bold uppercase">Selection Error</div>
-                            <div className="ui-metric text-risk">-{Math.abs(Math.round(selectionError * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Universe Drag</span></div>
+                            <div className="ui-metric text-risk">-{Math.abs(Math.round((findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol)) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Universe Drag</span></div>
                             <p className="ui-value text-meta leading-relaxed italic text-[11px]">
                                 The gap between your choice of assets and the broad market. You are missing potential yield due to asset class omission.
                             </p>
@@ -280,7 +273,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
 
                         <div className="space-y-2">
                             <div className="ui-caption text-amber-500 font-bold uppercase">Execution Error</div>
-                            <div className="ui-metric text-amber-500">-{Math.abs(Math.round(executionError * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Weighting Drag</span></div>
+                            <div className="ui-metric text-amber-500">-{Math.abs(Math.round((findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Weighting Drag</span></div>
                             <p className="ui-value text-meta leading-relaxed italic text-[11px]">
                                 Internal friction from sub-optimal weights. You are taking uncompensated risk compared to the best possible mix of your current assets.
                             </p>
@@ -289,8 +282,8 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         <div className="bg-accent/5 border border-accent/20 p-6 space-y-3">
                             <div className="ui-caption text-accent font-black">Strategic Verdict</div>
                             <p className="ui-value text-truth font-bold leading-relaxed text-[13px]">
-                                Your total efficiency gap is **{(totalEfficiencyGap * 100).toFixed(1)}%**. 
-                                {selectionError > executionError 
+                                Your total efficiency gap is **{((findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) * 100).toFixed(1)}%**. 
+                                {(findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol)) > (findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) 
                                     ? " Your primary bottleneck is Asset Selection." 
                                     : " Your primary bottleneck is Portfolio Weighting."}
                             </p>
