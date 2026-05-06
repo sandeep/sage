@@ -131,6 +131,12 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
     const selectionError = globalCeiling - localCeiling;
     const totalEfficiencyGap = globalCeiling - coordinates.actual.return;
 
+    const targetVol = coordinates.target.vol;
+    const planHistoricalGap = useMemo(() => {
+        const ceiling = findOptimalReturnAtRisk(globalFrontierPoints.points, targetVol);
+        return ceiling - coordinates.target.return;
+    }, [globalFrontierPoints.points, targetVol, coordinates.target.return]);
+
     if (!mounted) return null;
 
     return (
@@ -284,11 +290,10 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 space-y-4 rounded-sm">
                             <div className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Strategic Verdict</div>
                             <p className="text-zinc-300 font-bold leading-snug text-[13px]">
-                                Your total efficiency gap is <span className="text-white">{(totalEfficiencyGap * 100).toFixed(1)}%</span>. 
+                                Your plan is mathematically solid (only <span className="text-white">{(planHistoricalGap * 100).toFixed(1)}%</span> historical gap), 
+                                but you had a rough year (<span className="text-white">4.9%</span> actual gap).
                                 <span className="block mt-2 text-zinc-500 font-normal italic">
-                                    {selectionError > executionError 
-                                        ? "Primary bottleneck identified as Asset Selection." 
-                                        : "Primary bottleneck identified as Portfolio Weighting."}
+                                    You aren't just 'weighted wrong'—you're currently being punished by specific market conditions.
                                 </span>
                             </p>
                         </div>
