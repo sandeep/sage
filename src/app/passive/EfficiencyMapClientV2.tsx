@@ -8,8 +8,7 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Cell,
-    ReferenceLine
+    Cell
 } from 'recharts';
 import { Coordinates } from '@/lib/types/audit';
 
@@ -54,10 +53,11 @@ const findOptimalReturnAtRisk = (points: ChartPoint[], targetVol: number) => {
     return best.return;
 };
 
+const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
+
 const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: boolean; payload?: any[]; localPoints: ChartPoint[]; targetVol: number }) => {
     if (active && payload && payload.length) {
         const d = payload[0].payload as ChartPoint;
-        const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
         const labelStr = d.label || (d.isGlobal ? 'Strategic Global Frontier' : (d.isCurve ? 'Local Portfolio Frontier' : (d.isTrail ? 'Historical Snapshot' : 'Simulated Portfolio')));
         
         let dragSection = null;
@@ -140,29 +140,12 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
                         margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
-                        onMouseMove={(e: any) => {
-                            if (e?.activePayload?.length > 0) {
-                                const p = e.activePayload[0].payload as ChartPoint;
-                                // Enable vectors for portfolios, snapshots, and simulated points
-                                // Only exclude the frontier lines themselves to keep the UI focused
-                                if (!p.isCurve && !p.isGlobal) {
-                                    setHoveredPoint(p);
-                                } else {
-                                    setHoveredPoint(null);
-                                }
-                            } else {
-                                setHoveredPoint(null);
-                            }
-                        }}
-                        onMouseLeave={() => {
-                            setHoveredPoint(null);
-                        }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                         <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
                         <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
-                        <Tooltip cursor={false} content={<CustomTooltip localPoints={frontierPoints.points} targetVol={coordinates.target.vol} />} />
                         
+                        {/* 1. Cloud (Bottom Layer) */}
                         <Scatter 
                             name="Local Opportunity Set" 
                             data={frontierPoints.cloud} 
@@ -172,6 +155,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
                         
+                        {/* 2. Frontier Lines */}
                         <Scatter 
                             name="Global Strategic Ceiling" 
                             data={globalFrontierPoints.points.map(p => ({ ...p, isGlobal: true }))} 
@@ -189,23 +173,37 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
 
+                        {/* 3. Snapshots and Portfolios */}
                         <Scatter name="Snapshots" data={trailData} isAnimationActive={false}>
                             {trailData.map((entry, index) => (
-                                <Cell key={`trail-${index}`} fill="#f59e0b" fillOpacity={0.7} />
+                                <Cell 
+                                    key={`trail-${index}`} 
+                                    fill="#f59e0b" 
+                                    fillOpacity={0.7} 
+                                    onMouseEnter={() => setHoveredPoint(entry)}
+                                    onMouseLeave={() => setHoveredPoint(null)}
+                                />
                             ))}
                         </Scatter>
 
                         <Scatter name="Portfolios" data={data} isAnimationActive={false}>
                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={index === 1 ? 4 : 0} stroke={entry.fill} strokeOpacity={0.2} />
+                                <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={entry.fill} 
+                                    strokeWidth={index === 1 ? 4 : 0} 
+                                    stroke={entry.fill} 
+                                    strokeOpacity={0.2} 
+                                    onMouseEnter={() => setHoveredPoint(entry)}
+                                    onMouseLeave={() => setHoveredPoint(null)}
+                                />
                             ))}
                         </Scatter>
 
-                        {/* Interactive Delta Vectors for Hover - Absolute final children for top-layer visibility */}
+                        {/* Interactive Delta Vectors (Top Layer) */}
                         {hoveredPoint && (
                             <>
                                 <Scatter
-                                    name="Return Vector (ΔY)"
                                     isAnimationActive={false}
                                     data={[
                                         { vol: hoveredPoint.vol, return: hoveredPoint.return },
@@ -215,7 +213,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                     shape={() => null}
                                 />
                                 <Scatter
-                                    name="Risk Vector (ΔX)"
                                     isAnimationActive={false}
                                     data={[
                                         { vol: coordinates.target.vol, return: hoveredPoint.return },
@@ -226,6 +223,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                 />
                             </>
                         )}
+                        <Tooltip cursor={false} content={<CustomTooltip localPoints={frontierPoints.points} targetVol={coordinates.target.vol} />} />
                     </ScatterChart>
                 </ResponsiveContainer>
                 
