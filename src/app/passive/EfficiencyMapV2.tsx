@@ -14,7 +14,7 @@ export default async function EfficiencyMapV2() {
     return (
         <section className="space-y-12">
             <div className="ui-section-header">
-                <h2>Efficient Frontier</h2>
+                <h2>Efficient Frontier (50-Year Average)</h2>
                 <span>Risk/Reward Positioning</span>
             </div>
             <EfficiencyMapClientV2 

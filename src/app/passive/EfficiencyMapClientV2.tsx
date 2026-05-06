@@ -53,11 +53,10 @@ const findOptimalReturnAtRisk = (points: ChartPoint[], targetVol: number) => {
     return best.return;
 };
 
-const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
-
 const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: boolean; payload?: any[]; localPoints: ChartPoint[]; targetVol: number }) => {
     if (active && payload && payload.length) {
         const d = payload[0].payload as ChartPoint;
+        const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
         const labelStr = d.label || (d.isGlobal ? 'Strategic Global Frontier' : (d.isCurve ? 'Local Portfolio Frontier' : (d.isTrail ? 'Historical Snapshot' : 'Simulated Portfolio')));
         
         let dragSection = null;
@@ -135,17 +134,17 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
     if (!mounted) return null;
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-24">
-            <div className="xl:col-span-2 aspect-video min-h-[500px] relative">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-20">
+            <div className="xl:col-span-3 aspect-video min-h-[500px] relative border border-zinc-900/50 bg-black/20 rounded-sm overflow-hidden">
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
-                        margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
+                        margin={{ top: 80, right: 40, bottom: 60, left: 20 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                        <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
-                        <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700 }} />
+                        <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700, offset: 20 }} />
+                        <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700, offset: 10 }} />
                         
-                        {/* 1. Cloud (Bottom Layer) */}
+                        {/* 1. Cloud */}
                         <Scatter 
                             name="Local Opportunity Set" 
                             data={frontierPoints.cloud} 
@@ -160,7 +159,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             name="Global Strategic Ceiling" 
                             data={globalFrontierPoints.points.map(p => ({ ...p, isGlobal: true }))} 
                             fill="#52525b" 
-                            line={{ stroke: '#3f3f46', strokeWidth: 1.5, strokeDasharray: '6 4' }} 
+                            line={{ stroke: '#27272a', strokeWidth: 1.5, strokeDasharray: '6 4' }} 
                             shape={() => null}
                             isAnimationActive={false} 
                         />
@@ -168,12 +167,12 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             name="Local Portfolio Ceiling" 
                             data={frontierPoints.points.map(p => ({ ...p, isCurve: true }))} 
                             fill="#10b981" 
-                            line={{ stroke: '#10b981', strokeWidth: 2.5 }} 
+                            line={{ stroke: '#10b981', strokeWidth: 2 }} 
                             shape={() => null}
                             isAnimationActive={false} 
                         />
 
-                        {/* 3. Snapshots and Portfolios */}
+                        {/* 3. Snapshots */}
                         <Scatter name="Snapshots" data={trailData} isAnimationActive={false}>
                             {trailData.map((entry, index) => (
                                 <Cell 
@@ -186,6 +185,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             ))}
                         </Scatter>
 
+                        {/* 4. Portfolios */}
                         <Scatter name="Portfolios" data={data} isAnimationActive={false}>
                             {data.map((entry, index) => (
                                 <Cell 
@@ -200,7 +200,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             ))}
                         </Scatter>
 
-                        {/* Interactive Delta Vectors (Top Layer) */}
+                        {/* 5. DELTA VECTORS */}
                         {hoveredPoint && (
                             <>
                                 <Scatter
@@ -209,7 +209,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                         { vol: hoveredPoint.vol, return: hoveredPoint.return },
                                         { vol: hoveredPoint.vol, return: findOptimalReturnAtRisk(frontierPoints.points, hoveredPoint.vol) }
                                     ]}
-                                    line={{ stroke: '#f59e0b', strokeWidth: 3, strokeDasharray: '6 6' }}
+                                    line={{ stroke: '#f59e0b', strokeWidth: 2, strokeDasharray: '6 6' }}
                                     shape={() => null}
                                 />
                                 <Scatter
@@ -218,7 +218,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                         { vol: coordinates.target.vol, return: hoveredPoint.return },
                                         { vol: hoveredPoint.vol, return: hoveredPoint.return }
                                     ]}
-                                    line={{ stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 6' }}
+                                    line={{ stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6 6' }}
                                     shape={() => null}
                                 />
                             </>
@@ -227,61 +227,69 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     </ScatterChart>
                 </ResponsiveContainer>
                 
-                {/* HUD Elements */}
-                <div className="absolute top-2 left-2 flex flex-col gap-1 text-[8px] font-black uppercase tracking-[0.2em] bg-black/80 p-3 border border-zinc-900 rounded-sm pointer-events-none z-20">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-white" /> 
+                {/* HUD Elements - Repositioned to avoid sidebar collision */}
+                <div className="absolute top-4 left-6 flex flex-col gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] bg-black/60 backdrop-blur-md p-4 border border-zinc-900 rounded-sm pointer-events-none z-20">
+                    <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.3)]" /> 
                         <span className="text-zinc-400">Market (VTI)</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#6366f1]" /> 
+                    <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#6366f1] shadow-[0_0_8px_rgba(99,102,241,0.3)]" /> 
                         <span className="text-zinc-400">Strategy (Target)</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#fb7185]" /> 
+                    <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#fb7185] shadow-[0_0_8px_rgba(251,113,133,0.3)]" /> 
                         <span className="text-zinc-400">Portfolio (Actual)</span>
                     </div>
                 </div>
 
-                <div className="absolute top-2 right-2 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 pr-4 pt-4 text-[8px] uppercase font-black tracking-widest pointer-events-none z-20">
-                    <div className="flex items-center gap-2">
-                        <span className="w-8 h-[1px] border-t-2 border-dashed border-zinc-600" />
+                <div className="absolute top-4 right-6 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 text-[8px] uppercase font-black tracking-widest pointer-events-none z-20 bg-black/40 backdrop-blur-sm p-3 rounded-sm border border-zinc-900/30">
+                    <div className="flex items-center gap-3">
+                        <span className="w-10 h-[1px] border-t border-dashed border-zinc-600" />
                         Global Strategic Ceiling
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-500/60">
-                        <span className="w-8 h-[2px] bg-emerald-500/60" />
+                    <div className="flex items-center gap-3 text-emerald-500/60">
+                        <span className="w-10 h-[2px] bg-emerald-500/60" />
                         Local Portfolio Ceiling
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-12">
-                <div className="space-y-6">
-                    <div className="text-ui-header text-truth border-b border-zinc-900/50 pb-4">Efficiency De-composition</div>
-                    <div className="space-y-10">
-                        <div className="space-y-2">
-                            <div className="ui-caption text-risk font-bold uppercase">Selection Error</div>
-                            <div className="ui-metric text-risk">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Universe Drag</span></div>
-                            <p className="ui-value text-meta leading-relaxed italic text-[11px]">
-                                The gap between your choice of assets and the broad market. You are missing potential yield due to asset class omission.
+            <div className="xl:col-span-1 space-y-16 pl-4 border-l border-zinc-900/30">
+                <div className="space-y-10">
+                    <div className="space-y-4">
+                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">Diagnostics</div>
+                        <h3 className="text-xl font-black tracking-tighter uppercase text-white leading-tight">Efficiency<br/>De-composition</h3>
+                    </div>
+                    
+                    <div className="space-y-12">
+                        <div className="space-y-3">
+                            <div className="text-risk font-bold uppercase tracking-widest text-[9px]">Selection Error</div>
+                            <div className="text-3xl font-black text-risk tracking-tighter">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}%</div>
+                            <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Universe Drag</div>
+                            <p className="text-zinc-500 leading-relaxed italic text-[11px] pt-1 border-t border-zinc-900/50">
+                                Gap between current assets and broad market potential. Missed yield due to asset class omission.
                             </p>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="ui-caption text-amber-500 font-bold uppercase">Execution Error</div>
-                            <div className="ui-metric text-amber-500">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Weighting Drag</span></div>
-                            <p className="ui-value text-meta leading-relaxed italic text-[11px]">
-                                Internal friction from sub-optimal weights. You are taking uncompensated risk compared to the best possible mix of your current assets.
+                        <div className="space-y-3">
+                            <div className="text-amber-500 font-bold uppercase tracking-widest text-[9px]">Wrong Asset Mix (Historical)</div>
+                            <div className="text-3xl font-black text-amber-500 tracking-tighter">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}%</div>
+                            <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weighting Drag</div>
+                            <p className="text-zinc-500 leading-relaxed italic text-[11px] pt-1 border-t border-zinc-900/50">
+                                The money you lose on average every year because your plan's percentages are mathematically imperfect.
                             </p>
                         </div>
 
-                        <div className="bg-accent/5 border border-accent/20 p-6 space-y-3">
-                            <div className="ui-caption text-accent font-black">Strategic Verdict</div>
-                            <p className="ui-value text-truth font-bold leading-relaxed text-[13px]">
-                                Your total efficiency gap is **{(totalEfficiencyGap * 100).toFixed(1)}%**. 
-                                {selectionError > executionError 
-                                    ? " Your primary bottleneck is Asset Selection." 
-                                    : " Your primary bottleneck is Portfolio Weighting."}
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 space-y-4 rounded-sm">
+                            <div className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Strategic Verdict</div>
+                            <p className="text-zinc-300 font-bold leading-snug text-[13px]">
+                                Your total efficiency gap is <span className="text-white">{(totalEfficiencyGap * 100).toFixed(1)}%</span>. 
+                                <span className="block mt-2 text-zinc-500 font-normal italic">
+                                    {selectionError > executionError 
+                                        ? "Primary bottleneck identified as Asset Selection." 
+                                        : "Primary bottleneck identified as Portfolio Weighting."}
+                                </span>
                             </p>
                         </div>
                     </div>
