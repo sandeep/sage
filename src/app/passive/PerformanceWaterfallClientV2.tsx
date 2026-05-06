@@ -42,7 +42,7 @@ export default function PerformanceWaterfallClientV2({
         { label: 'Strategy Potential', val: targetReturn, dollars: targetReturn * totalValue, type: 'strategy', color: 'accent' },
         { label: 'Excess Fund Fees', val: feeDrag, dollars: feeDollars, type: 'drag', color: 'risk' },
         { label: 'Wrong Tax Placement', val: taxDrag, dollars: taxDollars, type: 'drag', color: 'risk' },
-        { label: 'Wrong Asset Mix', val: driftDrag, dollars: driftDollars, type: 'drag', color: 'risk' },
+        { label: 'Wrong Asset Mix (Today)', val: driftDrag, dollars: driftDollars, type: 'drag', color: 'risk' },
         { label: 'Total Performance Gap', val: (feeDrag + taxDrag + driftDrag), dollars: totalGapDollars, type: 'gap', color: 'risk' },
         { label: 'Realized Return', val: actualReturn, dollars: actualReturn * totalValue, type: 'end', color: 'accent' },
     ];
