@@ -11,6 +11,13 @@ export default async function EfficiencyMapV2() {
     const globalFrontierPoints = report.globalFrontierPoints;
     const snapshotTrail = getSnapshotTrail();
 
+    // Calculate driftDrag1Y (Total Gap - Fee - Tax) for the Strategic Verdict
+    const planHorizon = report.horizons.find(h => h.horizon === '1Y ACTUAL') || report.horizons[0];
+    const feeDrag = (report.efficiency?.expenseDragBps || 0) / 10000;
+    const taxDrag = (report.efficiency?.locationDragBps || 0) / 10000;
+    const totalGap1Y = planHorizon.targetReturn - planHorizon.portfolioReturn;
+    const driftDrag1Y = totalGap1Y - feeDrag - taxDrag;
+
     return (
         <section className="space-y-12">
             <div className="ui-section-header">
@@ -22,6 +29,7 @@ export default async function EfficiencyMapV2() {
                 snapshotTrail={snapshotTrail} 
                 frontierPoints={frontierPoints}
                 globalFrontierPoints={globalFrontierPoints}
+                driftDrag1Y={driftDrag1Y}
             />
         </section>
     );
