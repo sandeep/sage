@@ -13,6 +13,17 @@ import {
 } from 'recharts';
 import { Coordinates } from '@/lib/types/audit';
 
+interface ChartPoint {
+    vol: number;
+    return: number;
+    label?: string | null;
+    isCurve?: boolean;
+    isGlobal?: boolean;
+    isTrail?: boolean;
+    fill?: string;
+    size?: number;
+}
+
 interface Props {
     coordinates: {
         vti: Coordinates;
@@ -21,15 +32,15 @@ interface Props {
     };
     snapshotTrail: { date: string; label: string | null; return: number; vol: number }[];
     frontierPoints: {
-        points: { vol: number; return: number; isCurve: boolean }[];
-        cloud: { vol: number; return: number; isCurve: boolean }[];
+        points: ChartPoint[];
+        cloud: ChartPoint[];
     };
     globalFrontierPoints: {
-        points: { vol: number; return: number; isCurve: boolean }[];
+        points: ChartPoint[];
     };
 }
 
-const findOptimalReturnAtRisk = (points: { vol: number, return: number }[], targetVol: number) => {
+const findOptimalReturnAtRisk = (points: ChartPoint[], targetVol: number) => {
     if (!points || points.length === 0) return 0;
     let best = points[0];
     let minDist = Math.abs(best.vol - targetVol);
@@ -43,9 +54,9 @@ const findOptimalReturnAtRisk = (points: { vol: number, return: number }[], targ
     return best.return;
 };
 
-const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: boolean; payload?: any[]; localPoints: any[]; targetVol: number }) => {
+const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: boolean; payload?: any[]; localPoints: ChartPoint[]; targetVol: number }) => {
     if (active && payload && payload.length) {
-        const d = payload[0].payload;
+        const d = payload[0].payload as ChartPoint;
         const toPct = (v: number) => `${(v * 100).toFixed(1)}%`;
         const labelStr = d.label || (d.isGlobal ? 'Strategic Global Frontier' : (d.isCurve ? 'Local Portfolio Frontier' : (d.isTrail ? 'Historical Snapshot' : 'Simulated Portfolio')));
         
@@ -92,7 +103,7 @@ const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: b
 
 export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, frontierPoints, globalFrontierPoints }: Props) {
     const [mounted, setMounted] = useState(false);
-    const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+    const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null);
     
     React.useEffect(() => setMounted(true), []);
 
@@ -114,8 +125,9 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
     [snapshotTrail]);
 
     const actualVol = coordinates.actual.vol;
-    const localCeiling = findOptimalReturnAtRisk(frontierPoints.points, actualVol);
-    const globalCeiling = findOptimalReturnAtRisk(globalFrontierPoints.points, actualVol);
+    const localCeiling = useMemo(() => findOptimalReturnAtRisk(frontierPoints.points, actualVol), [frontierPoints.points, actualVol]);
+    const globalCeiling = useMemo(() => findOptimalReturnAtRisk(globalFrontierPoints.points, actualVol), [globalFrontierPoints.points, actualVol]);
+    
     const executionError = localCeiling - coordinates.actual.return;
     const selectionError = globalCeiling - localCeiling;
     const totalEfficiencyGap = globalCeiling - coordinates.actual.return;
@@ -130,8 +142,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         margin={{ top: 60, right: 60, bottom: 40, left: 0 }}
                         onMouseMove={(e: any) => {
                             if (e?.activePayload?.length > 0) {
-                                const p = e.activePayload[0].payload;
-                                console.log('Chart Hover Payload:', p);
+                                const p = e.activePayload[0].payload as ChartPoint;
                                 // Enable vectors for portfolios, snapshots, and simulated points
                                 // Only exclude the frontier lines themselves to keep the UI focused
                                 if (!p.isCurve && !p.isGlobal) {
@@ -144,7 +155,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             }
                         }}
                         onMouseLeave={() => {
-                            console.log('Chart Hover Exit');
                             setHoveredPoint(null);
                         }}
                     >
@@ -179,32 +189,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
 
-                        {/* Interactive Delta Vectors for Hover - Shown only when a point is active */}
-                        {hoveredPoint && (
-                            <>
-                                <Scatter
-                                    name="Return Vector (ΔY)"
-                                    isAnimationActive={false}
-                                    data={[
-                                        { vol: hoveredPoint.vol, return: hoveredPoint.return },
-                                        { vol: hoveredPoint.vol, return: findOptimalReturnAtRisk(frontierPoints.points, hoveredPoint.vol) }
-                                    ]}
-                                    line={{ stroke: '#f59e0b', strokeWidth: 2, strokeDasharray: '6 6' }}
-                                    shape={() => null}
-                                />
-                                <Scatter
-                                    name="Risk Vector (ΔX)"
-                                    isAnimationActive={false}
-                                    data={[
-                                        { vol: coordinates.target.vol, return: hoveredPoint.return },
-                                        { vol: hoveredPoint.vol, return: hoveredPoint.return }
-                                    ]}
-                                    line={{ stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6 6' }}
-                                    shape={() => null}
-                                />
-                            </>
-                        )}
-
                         <Scatter name="Snapshots" data={trailData} isAnimationActive={false}>
                             {trailData.map((entry, index) => (
                                 <Cell key={`trail-${index}`} fill="#f59e0b" fillOpacity={0.7} />
@@ -216,6 +200,32 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                 <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={index === 1 ? 4 : 0} stroke={entry.fill} strokeOpacity={0.2} />
                             ))}
                         </Scatter>
+
+                        {/* Interactive Delta Vectors for Hover - Absolute final children for top-layer visibility */}
+                        {hoveredPoint && (
+                            <>
+                                <Scatter
+                                    name="Return Vector (ΔY)"
+                                    isAnimationActive={false}
+                                    data={[
+                                        { vol: hoveredPoint.vol, return: hoveredPoint.return },
+                                        { vol: hoveredPoint.vol, return: findOptimalReturnAtRisk(frontierPoints.points, hoveredPoint.vol) }
+                                    ]}
+                                    line={{ stroke: '#f59e0b', strokeWidth: 3, strokeDasharray: '6 6' }}
+                                    shape={() => null}
+                                />
+                                <Scatter
+                                    name="Risk Vector (ΔX)"
+                                    isAnimationActive={false}
+                                    data={[
+                                        { vol: coordinates.target.vol, return: hoveredPoint.return },
+                                        { vol: hoveredPoint.vol, return: hoveredPoint.return }
+                                    ]}
+                                    line={{ stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 6' }}
+                                    shape={() => null}
+                                />
+                            </>
+                        )}
                     </ScatterChart>
                 </ResponsiveContainer>
                 
@@ -253,7 +263,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     <div className="space-y-10">
                         <div className="space-y-2">
                             <div className="ui-caption text-risk font-bold uppercase">Selection Error</div>
-                            <div className="ui-metric text-risk">-{Math.abs(Math.round((findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol)) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Universe Drag</span></div>
+                            <div className="ui-metric text-risk">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Universe Drag</span></div>
                             <p className="ui-value text-meta leading-relaxed italic text-[11px]">
                                 The gap between your choice of assets and the broad market. You are missing potential yield due to asset class omission.
                             </p>
@@ -261,7 +271,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
 
                         <div className="space-y-2">
                             <div className="ui-caption text-amber-500 font-bold uppercase">Execution Error</div>
-                            <div className="ui-metric text-amber-500">-{Math.abs(Math.round((findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Weighting Drag</span></div>
+                            <div className="ui-metric text-amber-500">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}% <span className="ui-label text-meta lowercase ml-2 font-normal text-[10px]">Weighting Drag</span></div>
                             <p className="ui-value text-meta leading-relaxed italic text-[11px]">
                                 Internal friction from sub-optimal weights. You are taking uncompensated risk compared to the best possible mix of your current assets.
                             </p>
@@ -270,8 +280,8 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         <div className="bg-accent/5 border border-accent/20 p-6 space-y-3">
                             <div className="ui-caption text-accent font-black">Strategic Verdict</div>
                             <p className="ui-value text-truth font-bold leading-relaxed text-[13px]">
-                                Your total efficiency gap is **{((findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) * 100).toFixed(1)}%**. 
-                                {(findOptimalReturnAtRisk(globalFrontierPoints.points, coordinates.actual.vol) - findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol)) > (findOptimalReturnAtRisk(frontierPoints.points, coordinates.actual.vol) - coordinates.actual.return) 
+                                Your total efficiency gap is **{(totalEfficiencyGap * 100).toFixed(1)}%**. 
+                                {selectionError > executionError 
                                     ? " Your primary bottleneck is Asset Selection." 
                                     : " Your primary bottleneck is Portfolio Weighting."}
                             </p>
