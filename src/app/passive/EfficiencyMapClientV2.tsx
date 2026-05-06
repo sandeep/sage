@@ -131,7 +131,9 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         onMouseMove={(e: any) => {
                             if (e && e.activePayload && e.activePayload.length > 0) {
                                 const p = e.activePayload[0].payload;
-                                if (p.label || p.isTrail) {
+                                // Enable vectors for portfolios, snapshots, and simulated points
+                                // Only exclude the frontier lines themselves to keep the UI focused
+                                if (!p.isCurve && !p.isGlobal) {
                                     setHoveredPoint(p);
                                 } else {
                                     setHoveredPoint(null);
@@ -173,45 +175,27 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                             isAnimationActive={false} 
                         />
 
-                        {/* Static Delta Vectors for Portfolios - Higher reliability */}
-                        <Scatter
-                            isAnimationActive={false}
-                            data={[
-                                { vol: coordinates.actual.vol, return: coordinates.actual.return },
-                                { vol: coordinates.actual.vol, return: localCeiling }
-                            ]}
-                            line={{ stroke: '#f59e0b', strokeWidth: 3, strokeDasharray: '6 6' }}
-                            shape={() => null}
-                        />
-                        <Scatter
-                            isAnimationActive={false}
-                            data={[
-                                { vol: coordinates.target.vol, return: coordinates.actual.return },
-                                { vol: coordinates.actual.vol, return: coordinates.actual.return }
-                            ]}
-                            line={{ stroke: '#f43f5e', strokeWidth: 3, strokeDasharray: '6 6' }}
-                            shape={() => null}
-                        />
-
-                        {/* Interactive Delta Vectors for Hover */}
+                        {/* Interactive Delta Vectors for Hover - Shown only when a point is active */}
                         {hoveredPoint && (
                             <>
                                 <Scatter
+                                    name="Return Vector (ΔY)"
                                     isAnimationActive={false}
                                     data={[
                                         { vol: hoveredPoint.vol, return: hoveredPoint.return },
                                         { vol: hoveredPoint.vol, return: findOptimalReturnAtRisk(frontierPoints.points, hoveredPoint.vol) }
                                     ]}
-                                    line={{ stroke: '#f59e0b', strokeWidth: 4, strokeDasharray: '4 4' }}
+                                    line={{ stroke: '#f59e0b', strokeWidth: 2, strokeDasharray: '6 6' }}
                                     shape={() => null}
                                 />
                                 <Scatter
+                                    name="Risk Vector (ΔX)"
                                     isAnimationActive={false}
                                     data={[
                                         { vol: coordinates.target.vol, return: hoveredPoint.return },
                                         { vol: hoveredPoint.vol, return: hoveredPoint.return }
                                     ]}
-                                    line={{ stroke: '#f43f5e', strokeWidth: 4, strokeDasharray: '4 4' }}
+                                    line={{ stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6 6' }}
                                     shape={() => null}
                                 />
                             </>
