@@ -4,10 +4,7 @@ import { useRouter } from 'next/navigation';
 
 import { Directive as LogicDirective, PersistedDirective } from '@/lib/logic/rebalancer';
 
-interface Directive extends PersistedDirective {
-
-
-}
+interface Directive extends PersistedDirective {}
 
 const TYPE_COLORS: Record<string, string> = {
     BUY: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
