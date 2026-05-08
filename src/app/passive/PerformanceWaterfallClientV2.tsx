@@ -58,7 +58,7 @@ export default function PerformanceWaterfallClientV2({
                     return (
                         <div key={idx} className="flex-1 flex flex-col items-center">
                             <div className="ui-label text-center h-16 flex flex-col justify-center mb-6 px-4">
-                                <span className={`block mb-1 text-[10px] leading-tight ${
+                                <span className={`block mb-1 ui-caption leading-tight ${
                                     item.color === 'accent' ? 'text-accent' : 
                                     item.color === 'risk' ? 'text-risk' : 'text-white'
                                 }`}>{item.label}</span>

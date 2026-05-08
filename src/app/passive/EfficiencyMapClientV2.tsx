@@ -70,16 +70,16 @@ const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: b
                 dragSection = (
                     <div className="pt-2 mt-2 border-t border-zinc-800 space-y-2">
                         <div>
-                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider flex items-center gap-1">
+                            <div className="ui-caption text-zinc-500 flex items-center gap-1">
                                 <span className="w-2 h-[2px] bg-amber-500 inline-block" /> Return Drag (ΔY)
                             </div>
-                            <div className="text-amber-500 font-bold">{toPct(returnDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(optimalReturn)} ceiling</span></div>
+                            <div className="text-amber-500 font-bold ui-label lowercase">{toPct(returnDrag)} <span className="text-zinc-600 font-normal ml-1 lowercase italic">vs {toPct(optimalReturn)} ceiling</span></div>
                         </div>
                         <div>
-                            <div className="text-zinc-500 text-[9px] uppercase tracking-wider flex items-center gap-1">
+                            <div className="ui-caption text-zinc-500 flex items-center gap-1">
                                 <span className="w-2 h-[2px] bg-rose-500 inline-block" /> Risk Excess (ΔX)
                             </div>
-                            <div className="text-rose-500 font-bold">{(riskDrag > 0 ? '+' : '')}{toPct(riskDrag)} <span className="text-zinc-600 font-normal ml-1">vs {toPct(targetVol)} target</span></div>
+                            <div className="text-rose-500 font-bold ui-label lowercase">{(riskDrag > 0 ? '+' : '')}{toPct(riskDrag)} <span className="text-zinc-600 font-normal ml-1 lowercase italic">vs {toPct(targetVol)} target</span></div>
                         </div>
                     </div>
                 );
@@ -87,12 +87,12 @@ const CustomTooltip = ({ active, payload, localPoints, targetVol }: { active?: b
         }
 
         return (
-            <div className="bg-card border border-zinc-900/50 p-4 shadow-2xl font-mono text-[10px] space-y-2 relative z-50">
+            <div className="bg-card border border-zinc-900/50 p-4 shadow-2xl space-y-2 relative z-50">
                 <div className="ui-label text-white border-b border-zinc-900/50 pb-1">{labelStr}</div>
-                <div className="text-truth">Return (CAGR): <span className="text-white">{toPct(d.return)}</span></div>
-                <div className="text-truth">Risk (Volatility): <span className="text-white">{toPct(d.vol)}</span></div>
+                <div className="ui-body text-zinc-400">Return (CAGR): <span className="text-white">{toPct(d.return)}</span></div>
+                <div className="ui-body text-zinc-400">Risk (Volatility): <span className="text-white">{toPct(d.vol)}</span></div>
                 {dragSection}
-                <div className="ui-caption mt-2 italic text-meta">
+                <div className="ui-caption mt-2 italic">
                     {d.isGlobal ? 'Market Ceiling' : d.isCurve ? 'Current Asset Ceiling' : d.isTrail ? 'Historical State' : 'Asset Mix Variation'}
                 </div>
             </div>
@@ -140,10 +140,23 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
                         margin={{ top: 80, right: 40, bottom: 60, left: 20 }}
+                        onMouseMove={(e: any) => {
+                            if (e && e.activePayload && e.activePayload.length > 0) {
+                                const p = e.activePayload[0].payload as ChartPoint;
+                                if (!p.isCurve && !p.isGlobal) {
+                                    setHoveredPoint(p);
+                                } else {
+                                    setHoveredPoint(null);
+                                }
+                            } else {
+                                setHoveredPoint(null);
+                            }
+                        }}
+                        onMouseLeave={() => setHoveredPoint(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                        <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 9, fontWeight: 700, offset: 20 }} />
-                        <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={10} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 9, fontWeight: 700, offset: 10 }} />
+                        <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={11} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 20 }} />
+                        <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={11} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 10 }} />
                         
                         {/* 1. Cloud */}
                         <Scatter 
@@ -180,8 +193,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                     key={`trail-${index}`} 
                                     fill="#f59e0b" 
                                     fillOpacity={0.7} 
-                                    onMouseEnter={() => setHoveredPoint(entry)}
-                                    onMouseLeave={() => setHoveredPoint(null)}
                                 />
                             ))}
                         </Scatter>
@@ -195,8 +206,6 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                                     strokeWidth={index === 1 ? 4 : 0} 
                                     stroke={entry.fill} 
                                     strokeOpacity={0.2} 
-                                    onMouseEnter={() => setHoveredPoint(entry)}
-                                    onMouseLeave={() => setHoveredPoint(null)}
                                 />
                             ))}
                         </Scatter>
@@ -229,7 +238,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                 </ResponsiveContainer>
                 
                 {/* HUD Elements - Repositioned to avoid sidebar collision */}
-                <div className="absolute top-4 left-6 flex flex-col gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] bg-black/60 backdrop-blur-md p-4 border border-zinc-900 rounded-sm pointer-events-none z-20">
+                <div className="absolute top-4 left-6 flex flex-col gap-1.5 ui-caption bg-black/60 backdrop-blur-md p-4 border border-zinc-900 rounded-sm pointer-events-none z-20">
                     <div className="flex items-center gap-3">
                         <span className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.3)]" /> 
                         <span className="text-zinc-400">Market (VTI)</span>
@@ -244,7 +253,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                     </div>
                 </div>
 
-                <div className="absolute top-4 right-6 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 text-[8px] uppercase font-black tracking-widest pointer-events-none z-20 bg-black/40 backdrop-blur-sm p-3 rounded-sm border border-zinc-900/30">
+                <div className="absolute top-4 right-6 ui-caption text-zinc-500/60 flex flex-col items-end gap-2 pointer-events-none z-20 bg-black/40 backdrop-blur-sm p-3 rounded-sm border border-zinc-900/30">
                     <div className="flex items-center gap-3">
                         <span className="w-10 h-[1px] border-t border-dashed border-zinc-600" />
                         Global Strategic Ceiling
@@ -259,38 +268,36 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
             <div className="xl:col-span-1 space-y-16 pl-4 border-l border-zinc-900/30">
                 <div className="space-y-10">
                     <div className="space-y-4">
-                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">Diagnostics</div>
-                        <h3 className="text-xl font-black tracking-tighter uppercase text-white leading-tight">Efficiency<br/>De-composition</h3>
+                        <div className="ui-caption text-zinc-500">Diagnostics</div>
+                        <h3 className="ui-header text-white leading-tight">Efficiency<br/>De-composition</h3>
                     </div>
                     
                     <div className="space-y-12">
-                        <div className="space-y-3">
-                            <div className="text-risk font-bold uppercase tracking-widest text-[9px]">Selection Error</div>
-                            <div className="text-3xl font-black text-risk tracking-tighter">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}%</div>
-                            <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Universe Drag</div>
-                            <p className="text-zinc-500 leading-relaxed italic text-[11px] pt-1 border-t border-zinc-900/50">
+                        <div className="space-y-2">
+                            <div className="ui-label text-risk">Selection Error</div>
+                            <div className="ui-metric text-white">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}%</div>
+                            <p className="ui-body text-zinc-400 mt-2">
                                 Gap between current assets and broad market potential. Missed yield due to asset class omission.
                             </p>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="text-amber-500 font-bold uppercase tracking-widest text-[9px]">Wrong Asset Mix (Historical)</div>
-                            <div className="text-3xl font-black text-amber-500 tracking-tighter">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}%</div>
-                            <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weighting Drag</div>
-                            <p className="text-zinc-500 leading-relaxed italic text-[11px] pt-1 border-t border-zinc-900/50">
+                        <div className="space-y-2">
+                            <div className="ui-label text-amber-500">Wrong Asset Mix (Historical)</div>
+                            <div className="ui-metric text-white">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}%</div>
+                            <p className="ui-body text-zinc-400 mt-2">
                                 The money you lose on average every year because your plan's percentages are mathematically imperfect.
                             </p>
                         </div>
 
-                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 space-y-4 rounded-sm">
-                            <div className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Strategic Verdict</div>
-                            <p className="text-zinc-300 font-bold leading-snug text-[13px]">
-                                Your plan's weighting is mathematically strong (only <span className="text-white">{(executionError * 100).toFixed(1)}%</span> historical gap), 
-                                but you had a rough year (<span className="text-white">{(driftDrag1Y * 100).toFixed(1)}%</span> actual gap).
-                                <span className="block mt-2 text-zinc-500 font-normal italic">
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-sm">
+                            <div className="ui-label text-emerald-500 mb-3 text-[10px] tracking-widest">Strategic Verdict</div>
+                            <div className="ui-body text-zinc-300">
+                                Your plan's weighting is mathematically strong (only <span className="text-white font-bold">{(executionError * 100).toFixed(1)}%</span> historical gap), 
+                                but you had a rough year (<span className="text-white font-bold">{(driftDrag1Y * 100).toFixed(1)}%</span> actual gap).
+                                <span className="block mt-4 text-zinc-500 italic text-[12px]">
                                     You aren't just 'weighted wrong'—you're currently being punished by specific market conditions.
                                 </span>
-                            </p>
+                            </div>
                         </div>
                     </div>
                 </div>
