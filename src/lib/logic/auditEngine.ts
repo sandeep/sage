@@ -194,6 +194,12 @@ export async function generateAuditReport(): Promise<AuditReport> {
     const globalFrontierData = await getFrontier(GLOBAL_STRATEGIC_UNIVERSE);
     const globalFrontierPoints = { points: globalFrontierData.points };
 
+    const actualReturnsMap: Record<string, number> = {};
+    portFull.years.forEach((y, i) => actualReturnsMap[String(y)] = portFull.annualReturns[i]);
+    
+    const targetReturnsMap: Record<string, number> = {};
+    targetFull.years.forEach((y, i) => targetReturnsMap[String(y)] = targetFull.annualReturns[i]);
+
     return {
         tv,
         accountCount: accountCount.c,
@@ -209,6 +215,10 @@ export async function generateAuditReport(): Promise<AuditReport> {
         concentrationRisks,
         currentCagr: horizons[0].portfolioReturn,
         targetCagr: horizons[0].targetReturn,
+        annualReturns: {
+            actual: actualReturnsMap,
+            target: targetReturnsMap
+        },
         strategyHistory
     };
 }

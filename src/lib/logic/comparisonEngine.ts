@@ -22,6 +22,9 @@ import { getStrategicSettings } from '../db/settings';
 import { getPortfolioWeights } from './portfolioEngine';
 import { calculateHistoricalProxyReturns } from './simbaEngine';
 import { generateAuditReport } from './auditEngine';
+import { calculateHierarchicalMetrics } from './xray';
+import { getAllocationTree } from '../db/allocation';
+import { flattenLeafWeights } from './allocationSimulator';
 
 export const simbaData = (simbaRaw as any).asset_classes as SimbaData['asset_classes'];
 
@@ -149,6 +152,7 @@ const YEARLY_SHOCKS: Record<string, { vti: number; scv: number; reit: number; in
 };
 
 import { TICKER_TO_SIMBA, LABEL_TO_SIMBA } from './simbaEngine';
+import { SIMBA_MAP } from './allocationSimulator';
 
 export function computeCrisisDrawdown(
     annualReturnsByYear: Record<string, number>,
@@ -163,15 +167,15 @@ export function computeCrisisDrawdown(
         if (weights) {
             let weightedShock = 0;
             let totalW = 0;
-            for (const [ticker, weight] of Object.entries(weights)) {
-                const simbaClass = TICKER_TO_SIMBA[ticker.toUpperCase()] || LABEL_TO_SIMBA[ticker];
-                if (!simbaClass) continue;
+            for (const [label, weight] of Object.entries(weights)) {
+                // Normalize label/ticker to Simba class using the centralized SIMBA_MAP
+                const simbaClass = SIMBA_MAP[label] || TICKER_TO_SIMBA[label.toUpperCase()] || LABEL_TO_SIMBA[label] || label;
+                const s = simbaClass.toUpperCase();
                 
-                const s = simbaClass.toLowerCase();
-                const shockVal = (s === 'scv') ? shock.scv :
-                                (s === 'reit') ? shock.reit :
-                                (s === 'intl' || s === 'em') ? shock.intl :
-                                (s === 'bond' || s === 'itt') ? shock.bond :
+                const shockVal = (s === 'SCV') ? shock.scv :
+                                (s === 'REIT') ? shock.reit :
+                                (s === 'INTL' || s === 'EM') ? shock.intl :
+                                (s === 'BOND' || s === 'ITT') ? shock.bond :
                                 shock.vti;
                 
                 weightedShock += weight * shockVal;
@@ -195,37 +199,50 @@ export function computeCrisisDrawdown(
 // Re-added getComparisonData (Cleaned up from legacy Map logic)
 export async function getComparisonData(tab: string) {
     const report = await generateAuditReport();
-    const { tv } = report;
+    const { tv, horizons, coordinates } = report;
     
-    // THEORETICAL TARGET: Uses strategic weights directly for simulation (Island-agnostic)
-    const strategyRows = db.prepare('SELECT category, weight FROM strategy').all() as { category: string, weight: number }[];
-    const strategicWeights = Object.fromEntries(strategyRows.map(r => [r.category, r.weight]));
-    
-    const currentWeights = getPortfolioWeights();
+    // Extract weights directly from the audit metrics (The Truth)
+    // This matches how EfficiencyMap gets its weights
+    const metrics = calculateHierarchicalMetrics();
+    const currentWeights: Record<string, number> = {};
+    metrics?.forEach(m => {
+        if (m.level === 2 || m.label === 'Cash') {
+            if (m.actualPortfolio > 0) {
+                currentWeights[m.label] = m.actualPortfolio;
+            }
+        }
+    });
 
-    const vtiSim = calculateHistoricalProxyReturns({ 'VTI': 1 }, 60);
-    const targetSim = calculateHistoricalProxyReturns(strategicWeights, 60);
-    const actualSim = calculateHistoricalProxyReturns(currentWeights, 60);
+    const targetTree = getAllocationTree();
+    const strategicWeights = flattenLeafWeights(targetTree as any);
 
-    const vtiMetrics = vtiSim ? metricsFromSimba(vtiSim.annualReturns, vtiSim.annualReturns, vtiSim.years) : null;
-    const targetMetrics = targetSim && vtiSim ? metricsFromSimba(targetSim.annualReturns, vtiSim.annualReturns, targetSim.years) : null;
-    const actualMetrics = actualSim && vtiSim ? metricsFromSimba(actualSim.annualReturns, vtiSim.annualReturns, actualSim.years) : null;
+    const vtiMetrics = horizons.find(h => h.horizon === 'FULL HISTORY')!;
+    const targetMetrics = horizons.find(h => h.horizon === 'FULL HISTORY')!;
+    const actualMetrics = horizons.find(h => h.horizon === 'FULL HISTORY')!;
+
+    // Helper to get annual returns map
+    const getAnnualMap = (horizon: any) => {
+        // Since AuditReport doesn't export annualReturns record per horizon yet,
+        // we'll use computeCrisisDrawdown fallback for multi-year, 
+        // but the intra-year shocks will now have REAL weights.
+        return {}; 
+    };
 
     const crisisData = CRISIS_PERIODS.map(p => ({
         name: p.name,
         years: p.years,
-        vti: vtiMetrics ? computeCrisisDrawdown(vtiMetrics.annualReturns, p.years, true) : null,
-        target: targetMetrics ? computeCrisisDrawdown(targetMetrics.annualReturns, p.years, false, strategicWeights) : null,
-        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.annualReturns, p.years, false, currentWeights) : null,
+        vti: computeCrisisDrawdown((simbaRaw as any).asset_classes['VTI']?.returns || (simbaRaw as any).asset_classes['TSM']?.returns, p.years, true),
+        target: computeCrisisDrawdown(report.annualReturns.target, p.years, false, strategicWeights),
+        actual: computeCrisisDrawdown(report.annualReturns.actual, p.years, false, currentWeights),
     }));
 
     return {
-        actual: actualMetrics,
-        target: targetMetrics,
-        vti: vtiMetrics,
+        actual: { annualizedReturn: coordinates.actual.return, volatility: coordinates.actual.vol, annualReturns: {} },
+        target: { annualizedReturn: coordinates.target.return, volatility: coordinates.target.vol, annualReturns: {} },
+        vti: { annualizedReturn: coordinates.vti.return, volatility: coordinates.vti.vol, annualReturns: {} },
         crisisData,
         totalValue: tv,
-        dataNote: "Simba-based metrics are for full-history cycle analysis (60-year trailing window).",
+        dataNote: "Simba-based metrics use a 50-year trailing window for cycle analysis.",
     };
 }
 

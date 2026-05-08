@@ -55,5 +55,9 @@ export interface AuditReport {
     concentrationRisks: any[];
     currentCagr: number;
     targetCagr: number;
+    annualReturns: {
+        actual: Record<string, number>;
+        target: Record<string, number>;
+    };
     strategyHistory?: RegimeEvolution[];
 }

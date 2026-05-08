@@ -44,8 +44,8 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                         <tr className="ui-label border-b border-zinc-900 bg-zinc-900/30">
                             <th className="px-10 py-4 w-[260px]">Crisis Event</th>
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-truth">VTI (Market)</th>
-                            <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-risk">Actual</th>
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-accent">Strategy</th>
+                            <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-risk">Actual</th>
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-risk bg-risk/5 w-[300px]">
                                 Addl. Capital at Risk
                             </th>
@@ -53,8 +53,8 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                     </thead>
                     <tbody className="divide-y divide-zinc-900/50">
                         {crisisData.map(row => {
-                            const resilienceDelta = (row.target != null && row.actual != null) ? (row.target - row.actual) : 0;
-                            const isAtRisk = resilienceDelta > 0.001;
+                            const resilienceDelta = (row.target != null && row.actual != null) ? (row.actual - row.target) : 0;
+                            const isAtRisk = resilienceDelta < -0.001;
 
                             return (
                                 <tr key={row.name} className="hover:bg-zinc-900/20 transition-colors group">
@@ -68,15 +68,20 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                                         {pct(row.vti, "text-truth")}
                                     </td>
                                     <td className="px-10 py-5 text-right border-l border-zinc-900/50">
-                                        {pct(row.actual, "text-risk")}
+                                        {pct(row.target, "text-accent")}
                                     </td>
                                     <td className="px-10 py-5 text-right border-l border-zinc-900/50">
-                                        {pct(row.target, "text-accent")}
+                                        {pct(row.actual, "text-risk")}
                                     </td>
                                     <td className={`px-10 py-5 text-right border-l border-zinc-900/50 bg-risk/5`}>
                                         {isAtRisk ? (
-                                            <div className="ui-value text-risk font-bold tabular-nums">
-                                                +{dollar(resilienceDelta)}
+                                            <div className="flex flex-col items-end">
+                                                <div className="ui-value text-risk font-bold tabular-nums">
+                                                    {(resilienceDelta * 100).toFixed(1)}%
+                                                </div>
+                                                <div className="ui-caption text-risk opacity-60 font-bold">
+                                                    -{dollar(resilienceDelta)}
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="ui-value text-zinc-dim">—</div>
