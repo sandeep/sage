@@ -139,6 +139,7 @@ export const CRISIS_PERIODS = [
     { name: 'Black Monday',   years: [1987] },
     { name: 'Dot-com',        years: [2000, 2001, 2002] },
     { name: 'GFC',            years: [2008] },
+    { name: 'COVID-19',       years: [2020] },
     { name: 'Inflation Surge', years: [2022] },
 ];
 
@@ -147,15 +148,38 @@ const YEARLY_SHOCKS: Record<string, { vti: number; scv: number; reit: number; in
     '2020': { vti: -0.34, scv: -0.42, reit: -0.40, intl: -0.33, bond: -0.02 }
 };
 
+import { TICKER_TO_SIMBA, LABEL_TO_SIMBA } from './simbaEngine';
+
 export function computeCrisisDrawdown(
     annualReturnsByYear: Record<string, number>,
     years: number[],
-    isMarket: boolean = false
+    isMarket: boolean = false,
+    weights?: Record<string, number>
 ): number | null {
     if (years.length === 1 && YEARLY_SHOCKS[String(years[0])]) {
         const shock = YEARLY_SHOCKS[String(years[0])];
         if (isMarket) return shock.vti;
-        return shock.vti; // Fallback
+        
+        if (weights) {
+            let weightedShock = 0;
+            let totalW = 0;
+            for (const [ticker, weight] of Object.entries(weights)) {
+                const simbaClass = TICKER_TO_SIMBA[ticker.toUpperCase()] || LABEL_TO_SIMBA[ticker];
+                if (!simbaClass) continue;
+                
+                const s = simbaClass.toLowerCase();
+                const shockVal = (s === 'scv') ? shock.scv :
+                                (s === 'reit') ? shock.reit :
+                                (s === 'intl' || s === 'em') ? shock.intl :
+                                (s === 'bond' || s === 'itt') ? shock.bond :
+                                shock.vti;
+                
+                weightedShock += weight * shockVal;
+                totalW += weight;
+            }
+            return totalW > 0 ? weightedShock / totalW : shock.vti;
+        }
+        return shock.vti;
     }
 
     const sequence: number[] = [];
@@ -191,8 +215,8 @@ export async function getComparisonData(tab: string) {
         name: p.name,
         years: p.years,
         vti: vtiMetrics ? computeCrisisDrawdown(vtiMetrics.annualReturns, p.years, true) : null,
-        target: targetMetrics ? computeCrisisDrawdown(targetMetrics.annualReturns, p.years) : null,
-        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.annualReturns, p.years) : null,
+        target: targetMetrics ? computeCrisisDrawdown(targetMetrics.annualReturns, p.years, false, strategicWeights) : null,
+        actual: actualMetrics ? computeCrisisDrawdown(actualMetrics.annualReturns, p.years, false, currentWeights) : null,
     }));
 
     return {

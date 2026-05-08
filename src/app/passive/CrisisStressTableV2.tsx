@@ -53,8 +53,8 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                     </thead>
                     <tbody className="divide-y divide-zinc-900/50">
                         {crisisData.map(row => {
-                            const resilienceDelta = (row.target != null && row.actual != null) ? (row.actual - row.target) : 0;
-                            const isAtRisk = resilienceDelta > 0;
+                            const resilienceDelta = (row.target != null && row.actual != null) ? (row.target - row.actual) : 0;
+                            const isAtRisk = resilienceDelta > 0.001;
 
                             return (
                                 <tr key={row.name} className="hover:bg-zinc-900/20 transition-colors group">
