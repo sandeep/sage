@@ -76,11 +76,11 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                                     <td className={`px-10 py-5 text-right border-l border-zinc-900/50 bg-risk/5`}>
                                         {isAtRisk ? (
                                             <div className="flex flex-col items-end">
-                                                <div className="ui-value text-risk font-bold tabular-nums">
-                                                    {(resilienceDelta * 100).toFixed(1)}%
-                                                </div>
-                                                <div className="ui-caption text-risk opacity-60 font-bold">
+                                                <div className="ui-metric text-risk font-bold tabular-nums">
                                                     -{dollar(resilienceDelta)}
+                                                </div>
+                                                <div className="ui-caption text-risk opacity-60 font-bold uppercase tracking-widest mt-1">
+                                                    {(resilienceDelta * 100).toFixed(1)}% Loss Delta
                                                 </div>
                                             </div>
                                         ) : (

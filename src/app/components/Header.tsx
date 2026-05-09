@@ -12,16 +12,6 @@ export default function Header() {
 
   const isAlpha = pathname.startsWith('/alpha');
 
-  const getBreadcrumb = () => {
-    if (pathname === '/') return 'Portfolio » Overview';
-    if (pathname === '/performance') return 'Portfolio » Performance';
-    if (pathname.startsWith('/alpha/trades')) return 'Alpha » Trade Log';
-    if (pathname.startsWith('/alpha')) return 'Alpha » Performance';
-    if (pathname.startsWith('/accounts')) return 'Settings » Accounts';
-    if (pathname.startsWith('/admin/snapshots')) return 'Settings » Snapshots';
-    return 'Console';
-  };
-
   const syncColor = isAlpha ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-emerald-600 hover:bg-emerald-500';
   const syncLabel = isAlpha ? 'Import Alpha Data' : 'Sync Fidelity 360 Data';
 
@@ -34,11 +24,7 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-10 bg-black flex-shrink-0">
-      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
-        {getBreadcrumb()}
-      </div>
-      
+    <header className="h-16 border-b border-zinc-900 flex items-center justify-end px-10 bg-black flex-shrink-0">
       <div className="flex items-center gap-6">
         <button
           onClick={() => toggle()}

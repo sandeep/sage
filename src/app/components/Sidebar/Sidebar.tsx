@@ -47,8 +47,8 @@ export default function Sidebar() {
           <NavSection>
             <NavLink href="/passive" active={pathname === '/passive'}>Performance</NavLink>
             <NavLink href="/passive/portfolio" active={pathname === '/passive/portfolio'}>Portfolio</NavLink>
-            <NavLink href="/admin/allocation" active={pathname === '/admin/allocation'}>Strategy</NavLink>
-            <NavLink href="/admin/snapshots" active={pathname === '/admin/snapshots'}>History</NavLink>
+            <NavLink href="/passive/allocation" active={pathname === '/passive/allocation'}>Strategy</NavLink>
+            <NavLink href="/passive/snapshots" active={pathname === '/passive/snapshots'}>History</NavLink>
           </NavSection>
         ) : (
           <NavSection>
