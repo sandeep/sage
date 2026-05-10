@@ -14,6 +14,7 @@ type Tab = 'Futures' | 'Options' | 'Equities';
 
 export default function TradeLogClient({ initialFutures, initialOptions, initialEquities }: TradeLogClientProps) {
     const [activeTab, setActiveTab] = useState<Tab>('Futures');
+    const [activeYear, setActiveYear] = useState<string>('all');
     const [sortField, setSortField] = useState<keyof TradeLogEntry>('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -23,6 +24,10 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                       activeTab === 'Options' ? initialOptions :
                       initialEquities;
 
+        if (activeYear !== 'all') {
+            current = current.filter(d => d.date.startsWith(activeYear));
+        }
+
         return [...current].sort((a, b) => {
             const valA = a[sortField] ?? '';
             const valB = b[sortField] ?? '';
@@ -30,7 +35,9 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
             const res = valA < valB ? -1 : 1;
             return sortDir === 'asc' ? res : -res;
         });
-    }, [activeTab, initialFutures, initialOptions, initialEquities, sortField, sortDir]);
+    }, [activeTab, initialFutures, initialOptions, initialEquities, sortField, sortDir, activeYear]);
+
+    const years = ['all', '2026', '2025', '2024'];
 
     // Group by Year for UI
     const groupedData = useMemo(() => {
@@ -103,6 +110,21 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Year Selector */}
+            <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded-sm gap-1 w-fit">
+                {years.map(y => (
+                    <button
+                        key={y}
+                        onClick={() => setActiveYear(y)}
+                        className={`px-6 py-2 text-ui-label font-black uppercase tracking-widest transition-all ${
+                            activeYear === y ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                    >
+                        {y}
+                    </button>
+                ))}
             </div>
 
             {/* Top Summary */}

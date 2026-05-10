@@ -224,7 +224,7 @@ export default function AllocationEditor() {
                             hasChanges={hasChanges()} onAccept={handleAccept}
                         />
                         <div className="pt-8 border-t border-zinc-900">
-                            <div className="text-ui-label text-zinc-500 mb-8">Drift History</div>
+                            <div className="text-ui-label text-zinc-500 mb-8 uppercase tracking-[0.2em]">Strategic Divergence</div>
                             <AllocationDriftChart history={history} />
                         </div>
                     </div>

@@ -98,19 +98,28 @@ function calculateSeriesVolatility(pnlSeries: number[]): number {
     return Math.sqrt(variance * 252);
 }
 
-export async function calculateAlphaMetrics(): Promise<AlphaMetrics> {
+export async function calculateAlphaMetrics(startDate?: string, endDate?: string): Promise<AlphaMetrics> {
     const settings = getStrategicSettings();
     const rf = settings.risk_free_rate;
 
-    const rows = db.prepare(`
+    let query = `
         SELECT 
             date,
             daily_total as pnl,
             deposits,
             cumulative_pnl
         FROM alpha_daily_pnl
-        ORDER BY date
-    `).all() as { date: string, pnl: number, deposits: number, cumulative_pnl: number }[];
+    `;
+
+    const params: any[] = [];
+    if (startDate && endDate) {
+        query += ` WHERE date >= ? AND date <= ?`;
+        params.push(startDate, endDate);
+    }
+
+    query += ` ORDER BY date`;
+
+    const rows = db.prepare(query).all(...params) as { date: string, pnl: number, deposits: number, cumulative_pnl: number }[];
 
     if (rows.length === 0) {
         return {
@@ -215,15 +224,25 @@ function getClosestVtiPrice(date: string, map: Map<string, number>, sortedDates:
     return map.get(closest) || 0;
 }
 
-export async function getBookTradeStats(): Promise<BookTradeStats[]> {
+export async function getBookTradeStats(startDate?: string, endDate?: string): Promise<BookTradeStats[]> {
     const stats: BookTradeStats[] = [];
     const vtiMap = getVtiPriceMap();
     const sortedVtiDates = Array.from(vtiMap.keys()).sort();
     const settings = getStrategicSettings();
     const rf = settings.risk_free_rate;
 
+    const dateFilter = startDate && endDate ? `AND date >= ? AND date <= ?` : '';
+    const dateFilterWhere = startDate && endDate ? `WHERE date >= ? AND date <= ?` : '';
+    const dateFilterParams = startDate && endDate ? [startDate, endDate] : [];
+
+    const dateFilterClose = startDate && endDate ? `AND close_date >= ? AND close_date <= ?` : '';
+    const dateFilterCloseParams = startDate && endDate ? [startDate, endDate] : [];
+
+    const dateFilterActivity = startDate && endDate ? `AND activity_date >= ? AND activity_date <= ?` : '';
+    const dateFilterActivityParams = startDate && endDate ? [startDate, endDate] : [];
+
     // Fetch daily book PnLs for drawdown calculation
-    const dailyBookPnls = db.prepare(`SELECT date, options_pnl, equity_pnl, futures_pnl FROM alpha_daily_pnl ORDER BY date`).all() as any[];
+    const dailyBookPnls = db.prepare(`SELECT date, options_pnl, equity_pnl, futures_pnl FROM alpha_daily_pnl ${dateFilterWhere} ORDER BY date`).all(...dateFilterParams) as any[];
     const optDailyPnls = dailyBookPnls.map(r => r.options_pnl || 0);
     const eqDailyPnls = dailyBookPnls.map(r => r.equity_pnl || 0);
 
@@ -231,8 +250,8 @@ export async function getBookTradeStats(): Promise<BookTradeStats[]> {
     const eqMaxDD = calculateMaxDrawdownFromPnl(eqDailyPnls);
 
     // 1. Options Stats
-    const options = db.prepare(`SELECT open_date, close_date, net_pnl, strike, open_qty, open_premium, hold_days FROM alpha_option_trades WHERE close_date IS NOT NULL`).all() as any[];
-    const optionTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_option_trades WHERE close_date IS NOT NULL`).get() as { n: number };
+    const options = db.prepare(`SELECT open_date, close_date, net_pnl, strike, open_qty, open_premium, hold_days FROM alpha_option_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).all(...dateFilterCloseParams) as any[];
+    const optionTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_option_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).get(...dateFilterCloseParams) as { n: number };
     
     let optionsAlpha = 0;
     const optionCashflows: { date: string, amount: number }[] = [];
@@ -264,8 +283,8 @@ export async function getBookTradeStats(): Promise<BookTradeStats[]> {
     stats.push(optStats);
 
     // 2. Equities Stats
-    const equities = db.prepare(`SELECT net_pnl, open_date, close_date, open_price, qty FROM alpha_equity_trades WHERE close_date IS NOT NULL`).all() as any[];
-    const equityTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_equity_trades WHERE close_date IS NOT NULL`).get() as { n: number };
+    const equities = db.prepare(`SELECT net_pnl, open_date, close_date, open_price, qty FROM alpha_equity_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).all(...dateFilterCloseParams) as any[];
+    const equityTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_equity_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).get(...dateFilterCloseParams) as { n: number };
     
     let equitiesAlpha = 0;
     const equityCashflows: { date: string, amount: number }[] = [];
@@ -305,14 +324,14 @@ export async function getBookTradeStats(): Promise<BookTradeStats[]> {
     const futureSettlements = db.prepare(`
         SELECT activity_date, SUM(amount) as amount 
         FROM alpha_transactions 
-        WHERE trans_code = 'FUTSWP' 
+        WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
         GROUP BY activity_date 
         ORDER BY activity_date
-    `).all() as { amount: number }[];
+    `).all(...dateFilterActivityParams) as { amount: number }[];
     const futPnls = futureSettlements.map(r => r.amount);
     const futMaxDD = calculateMaxDrawdownFromPnl(futPnls);
     
-    const futureTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_transactions WHERE trans_code = 'FUTSWP' AND instrument IS NOT NULL AND instrument != ''`).get() as { n: number };
+    const futureTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_transactions WHERE trans_code = 'FUTSWP' AND instrument IS NOT NULL AND instrument != '' ${dateFilterActivity}`).get(...dateFilterActivityParams) as { n: number };
     const futStats = calculateStats('Futures', futPnls, futureTickerCount.n || 0, futPnls, futMaxDD);
     futStats.benchmarkAlpha = futStats.totalNetPnl;
     futStats.mwr = 0;
@@ -335,7 +354,11 @@ export interface TradeLogEntry {
     optionType?: string;
 }
 
-export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities'): Promise<TradeLogEntry[]> {
+export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', startDate?: string, endDate?: string): Promise<TradeLogEntry[]> {
+    const dateFilterClose = startDate && endDate ? `AND close_date >= ? AND close_date <= ?` : '';
+    const dateFilterActivity = startDate && endDate ? `AND activity_date >= ? AND activity_date <= ?` : '';
+    const dateFilterParams = startDate && endDate ? [startDate, endDate] : [];
+
     if (type === 'Futures') {
         const trades = db.prepare(`
             SELECT 
@@ -351,8 +374,9 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities'): Pro
                     ELSE (open_price - close_price) / open_price
                 END as pct
             FROM alpha_futures_trades
+            WHERE 1=1 ${dateFilterClose}
             ORDER BY close_date DESC
-        `).all() as TradeLogEntry[];
+        `).all(...dateFilterParams) as TradeLogEntry[];
 
         if (trades.length > 0) return trades;
 
@@ -367,9 +391,9 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities'): Pro
                 amount as pnl,
                 0 as pct
             FROM alpha_transactions
-            WHERE trans_code = 'FUTSWP'
+            WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
             ORDER BY activity_date DESC
-        `).all() as TradeLogEntry[];
+        `).all(...dateFilterParams) as TradeLogEntry[];
         return sweeps;
     }
 
@@ -391,9 +415,9 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities'): Pro
                     ELSE 0
                 END as pct
             FROM alpha_option_trades
-            WHERE close_date IS NOT NULL
+            WHERE close_date IS NOT NULL ${dateFilterClose}
             ORDER BY close_date DESC
-        `).all() as TradeLogEntry[];
+        `).all(...dateFilterParams) as TradeLogEntry[];
     }
 
     if (type === 'Equities') {
@@ -408,9 +432,9 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities'): Pro
                 net_pnl as pnl,
                 (close_price - open_price) / open_price as pct
             FROM alpha_equity_trades
-            WHERE close_date IS NOT NULL
+            WHERE close_date IS NOT NULL ${dateFilterClose}
             ORDER BY close_date DESC
-        `).all() as TradeLogEntry[];
+        `).all(...dateFilterParams) as TradeLogEntry[];
     }
 
     return [];
@@ -473,14 +497,24 @@ function calculateStats(
         calmarRatio
     };
 }
+export async function getAlphaNavSeries(startDate?: string, endDate?: string): Promise<{ date: string, nav: number }[]> {
+    let query = `
+        SELECT date, nav
+        FROM alpha_daily_pnl
+    `;
 
-export async function getAlphaNavSeries(): Promise<{ date: string, nav: number }[]> {
-    const rows = db.prepare(`
-        SELECT date, nav\n        FROM alpha_daily_pnl
-        ORDER BY date
-    `).all() as { date: string, nav: number }[];
+    const params: any[] = [];
+    if (startDate && endDate) {
+        query += ` WHERE date >= ? AND date <= ?`;
+        params.push(startDate, endDate);
+    }
+
+    query += ` ORDER BY date`;
+
+    const rows = db.prepare(query).all(...params) as { date: string, nav: number }[];
 
     if (rows.length === 0) return [];
+
 
     const firstDate = rows[0].date;
     const firstMonth = firstDate.substring(0, 7);

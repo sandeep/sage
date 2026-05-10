@@ -22,10 +22,10 @@ export default async function ActiveAlpha({ searchParams }: Props) {
         endDate = `${year}-12-31`;
     }
 
-    const metrics = await calculateAlphaMetrics();
-    const bookStats = await getBookTradeStats();
-    const alphaNavSeries = await getAlphaNavSeries();
-    const shadowVtiSeries = await getShadowVtiSeries(); 
+    const metrics = await calculateAlphaMetrics(startDate, endDate);
+    const bookStats = await getBookTradeStats(startDate, endDate);
+    const alphaNavSeries = await getAlphaNavSeries(startDate, endDate);
+    const shadowVtiSeries = await getShadowVtiSeries(startDate, endDate); 
 
     // Align series for the chart
     const shadowMap = new Map(shadowVtiSeries.map(s => [s.date, s.value]));
@@ -40,7 +40,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
     const fmtNum = (v: number) => v.toFixed(2);
     const fmtUSD = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
-    const years = ['all', '2024', '2025', '2026'];
+    const years = ['all', '2026', '2025', '2024'];
 
     return (
         <main className="min-h-screen bg-black text-white font-mono">
@@ -49,7 +49,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                 <div className="flex justify-between items-end border-b border-zinc-900 pb-8">
                     <div>
                         <h1 className="text-ui-hero">
-                            ACTIVE PERFORMANCE
+                            ACTIVE <span className="text-emerald-500">PERFORMANCE</span>
                         </h1>
                         <p className="text-ui-label !text-zinc-500 mt-2 uppercase tracking-[0.3em]">Active Performance vs Passive Allocation</p>
                     </div>

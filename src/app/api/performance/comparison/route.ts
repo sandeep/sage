@@ -190,13 +190,11 @@ export async function GET(req: NextRequest) {
             maxDrawdown:      computeMaxDrawdown(vtiNav),
         },
         navSeries,
-        excluded:       targetSimba?.excluded ?? [],
-        excludedWeight: targetSimba?.excludedWeight ?? 0,
+        excluded:       [], 
+        excludedWeight: 0,
         crisisData,
         tab:       'longrun',
         window:    null,
-        dataNote:  targetSimba && targetSimba.excluded.length > 0
-            ? `Excludes ${targetSimba.excluded.length} categories with no Simba data (${(targetSimba.excludedWeight * 100).toFixed(1)}% of allocation) — weights redistributed.`
-            : null,
+        dataNote:  null,
     });
 }
