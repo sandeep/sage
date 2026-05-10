@@ -133,7 +133,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                     <SummaryTile 
                         label="Total Realized" 
                         value={fmtUSD(stats.totalPnl)} 
-                        color={stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} 
+                        color={stats.totalPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'} 
                     />
                     
                     <FloatingTooltip title="Win Rate" content="Percentage of trades that resulted in a positive P&L. Focuses on hit-rate integrity.">
@@ -221,15 +221,15 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                                     {trade.exit > 0 ? trade.exit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                                                 </td>
                                                 <td className="px-6 py-3 ui-caption text-zinc-500 text-right tabular-nums">{trade.hold > 0 ? `${trade.hold}d` : '—'}</td>
-                                                <td className={`px-6 py-3 ui-metric text-right tabular-nums ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                                <td className={`px-6 py-3 ui-metric text-right tabular-nums ${trade.pnl >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
                                                     {fmtUSD(trade.pnl)}
                                                 </td>
-                                                <td className={`px-6 py-3 ui-value font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-emerald-400/80' : 'text-rose-500/80') : 'text-zinc-800'}`}>
+                                                <td className={`px-6 py-3 ui-value font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-indigo-400/80' : 'text-rose-500/80') : 'text-zinc-800'}`}>
                                                     {trade.pct !== 0 ? fmtPct(trade.pct) : '—'}
                                                 </td>
                                             </tr>
                                             {isExpanded && (
-                                                <tr className="bg-zinc-950/80 border-l-2 border-emerald-500/30">
+                                                <tr className="bg-zinc-950/80 border-l-2 border-indigo-500/30">
                                                     <td colSpan={8} className="px-12 py-6">
                                                         <div className="flex flex-col items-center justify-center space-y-2 py-8 border border-dashed border-zinc-900 rounded-sm">
                                                             <div className="ui-label text-zinc-500">Execution Proof Pending</div>

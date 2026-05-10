@@ -89,10 +89,10 @@ export default function AlphaNavChart({ data }: Props) {
                         name="Actual Portfolio"
                         type="monotone" 
                         dataKey="alphaNav" 
-                        stroke="#10b981" 
+                        stroke="#6366f1" 
                         strokeWidth={2} 
                         dot={false}
-                        activeDot={{ r: 4, fill: '#10b981', stroke: '#000' }}
+                        activeDot={{ r: 4, fill: '#6366f1', stroke: '#000' }}
                     />
                     <Line 
                         name="Equivalent VTI"

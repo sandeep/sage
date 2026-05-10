@@ -10,7 +10,7 @@ export default async function TradeLogPage() {
     const equities = await getTradeLog('Equities');
 
     return (
-        <main className="min-h-screen bg-black text-white font-mono selection:bg-emerald-500/30">
+        <main className="min-h-screen bg-black text-white font-mono selection:bg-indigo-500/30">
             <TradeLogClient 
                 initialFutures={futures} 
                 initialOptions={options} 
