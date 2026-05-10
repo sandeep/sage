@@ -152,8 +152,19 @@ function MetricParityGrid({ metrics }: { metrics: AlphaMetrics | BookTradeStats 
                     <MetricTile label="MWR (IRR)" value={fmtPct(metrics.mwr)} />
                 </FloatingTooltip>
 
-                <MetricTile label="Win Rate" value={fmtPct(metrics.winRate)} />
-                <MetricTile label="EV / Trade" value={fmtUSD(metrics.expectedValue)} color="text-zinc-400" />
+                <FloatingTooltip 
+                    title="Win Rate" 
+                    content="The percentage of closed trades that resulted in a positive P&L. Standard systems target > 50%, but high-alpha strategies often work with lower rates if the Avg Win is significantly larger than the Avg Loss."
+                >
+                    <MetricTile label="Win Rate" value={fmtPct(metrics.winRate)} />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Expected Value (EV)" 
+                    content="The average dollar amount gained or lost on every single trade executed. This is the mathematical 'Score' of your trading edge."
+                >
+                    <MetricTile label="EV / Trade" value={fmtUSD(metrics.expectedValue)} color="text-zinc-400" />
+                </FloatingTooltip>
 
                 {/* Row 2 */}
                 <FloatingTooltip 
@@ -170,8 +181,19 @@ function MetricParityGrid({ metrics }: { metrics: AlphaMetrics | BookTradeStats 
                     <MetricTile label="Calmar" value={fmtNum(metrics.calmarRatio)} />
                 </FloatingTooltip>
 
-                <MetricTile label="Avg Win" value={fmtUSD(metrics.avgWin)} color="text-active-accent/80" />
-                <MetricTile label="Avg Loss" value={fmtUSD(metrics.avgLoss)} color="text-active-risk/80" />
+                <FloatingTooltip 
+                    title="Average Win" 
+                    content="The average profit per winning trade. Use this as the baseline for your 'Target Reward' in strategy planning."
+                >
+                    <MetricTile label="Avg Win" value={fmtUSD(metrics.avgWin)} color="text-active-accent/80" />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Average Loss" 
+                    content="The average loss per losing trade. Institutional risk management requires keeping this significantly smaller than your Average Win."
+                >
+                    <MetricTile label="Avg Loss" value={fmtUSD(metrics.avgLoss)} color="text-active-risk/80" />
+                </FloatingTooltip>
             </div>
 
             {/* Risk Floor */}
