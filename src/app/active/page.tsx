@@ -77,7 +77,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                         <MetricTile 
                             label="Total P&L" 
                             value={fmtUSD(metrics.totalPnl)} 
-                            color={metrics.totalPnl >= 0 ? 'text-indigo-400' : 'text-rose-500'} 
+                            color={metrics.totalPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'} 
                         />
 
                         <FloatingTooltip 
@@ -87,43 +87,67 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             <MetricTile 
                                 label="Dollar Alpha" 
                                 value={fmtUSD(metrics.dollarAlpha)} 
-                                color={metrics.dollarAlpha >= 0 ? 'text-indigo-400' : 'text-rose-500'}
+                                color={metrics.dollarAlpha >= 0 ? 'text-indigo-400' : 'text-rose-400'}
                             />
                         </FloatingTooltip>
                         
-                        <FloatingTooltip title="TWR" content="Geometric mean of periodic returns.">
+                        <FloatingTooltip 
+                            title="TWR (Time-Weighted)" 
+                            content="The compounded growth rate of $1. Ignores the timing of your deposits. Compare this directly to VTI to see if your trading is actually beating the market."
+                        >
                             <MetricTile label="TWR" value={fmtPct(metrics.twr)} />
                         </FloatingTooltip>
 
-                        <FloatingTooltip title="MWR" content="Internal Rate of Return (IRR).">
+                        <FloatingTooltip 
+                            title="MWR / IRR (Money-Weighted)" 
+                            content="Your personal internal rate of return. Unlike TWR, this IS affected by when you put money in. If MWR < TWR, your timing of deposits is hurting your net result."
+                        >
                             <MetricTile label="MWR / IRR" value={fmtPct(metrics.mwr)} />
                         </FloatingTooltip>
 
-                        <FloatingTooltip title="Sharpe" content="Reward per unit of risk.">
+                        <FloatingTooltip 
+                            title="Sharpe Ratio" 
+                            content="Risk-adjusted return. > 1.0 is good, > 2.0 is institutional grade. A value of 0.2 means you're taking significant risk for very little reward."
+                        >
                             <MetricTile label="Sharpe" value={fmtNum(metrics.sharpeRatio)} />
                         </FloatingTooltip>
 
-                        <FloatingTooltip title="Calmar" content="Return vs Max Drawdown.">
+                        <FloatingTooltip 
+                            title="Calmar Ratio" 
+                            content="Return vs Max Drawdown. > 0.5 is acceptable, > 1.0 is strong. It measures if you are 'paying' too much in drawdown for your gains."
+                        >
                             <MetricTile label="Calmar" value={fmtNum(metrics.calmarRatio)} />
                         </FloatingTooltip>
                     </div>
 
                     {/* Risk & Equivalent Portfolio Row */}
                     <div className="ui-metric-grid grid-cols-1 md:grid-cols-4">
-                        <FloatingTooltip title="Equivalent VTI Value" content="Estimated current value if 100% of Active deposits were put into VTI instead.">
+                        <FloatingTooltip 
+                            title="Equivalent VTI Value" 
+                            content="The estimated value if 100% of Active deposits were put into VTI instead. This is the 'Opportunity Cost' baseline."
+                        >
                             <MetricTile label="Equivalent VTI" value={fmtUSD(metrics.shadowNav)} color="text-zinc-100" />
                         </FloatingTooltip>
                         
-                        <FloatingTooltip title="Conditional Value at Risk (CVaR)" content="The average loss in the worst 5% of trading days.">
+                        <FloatingTooltip 
+                            title="CVaR 95% (Risk)" 
+                            content="The average loss expected in the worst 5% of trading days. If this is -3%, expect a -3% hit on a truly bad day."
+                        >
                             <MetricTile label="CVaR 95%" value={fmtPct(metrics.cvar95)} color="text-rose-400" />
                         </FloatingTooltip>
 
-                        <FloatingTooltip title="Volatility" content="Annualized standard deviation of daily returns.">
+                        <FloatingTooltip 
+                            title="Volatility (Risk)" 
+                            content="The 'bumpiness' of your curve. VTI usually sits at 15-18%. High vol (>30%) suggests high leverage or concentration."
+                        >
                             <MetricTile label="Volatility" value={fmtPct(metrics.volatility)} color="text-zinc-300" />
                         </FloatingTooltip>
 
-                        <FloatingTooltip title="Max Drawdown" content="Largest peak-to-trough decline observed.">
-                            <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-rose-500" />
+                        <FloatingTooltip 
+                            title="Max Drawdown" 
+                            content="The deepest peak-to-trough valley hit. Compare to VTI's history (e.g. -20% in 2022) to judge your relative resilience."
+                        >
+                            <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-rose-400" />
                         </FloatingTooltip>
                     </div>
                 </section>
@@ -191,7 +215,7 @@ function BookStatCard({ stat }: { stat: any }) {
             <div className="p-6 space-y-4">
                 <div className="flex justify-between items-end border-b border-zinc-900/50 pb-2">
                     <span className="text-ui-label text-zinc-500 uppercase">Net Profit</span>
-                    <span className={`text-ui-data font-black ${stat.totalNetPnl >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                    <span className={`text-ui-data font-black ${stat.totalNetPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
                         {fmtUSD(stat.totalNetPnl)}
                     </span>
                 </div>
@@ -222,13 +246,13 @@ function BookStatCard({ stat }: { stat: any }) {
                     </div>
                     <div className="space-y-1">
                         <span className="text-ui-label text-zinc-600 uppercase font-black">Avg Loss</span>
-                        <div className="text-ui-body font-black text-rose-500/80">{fmtUSD(stat.avgLoss)}</div>
+                        <div className="text-ui-body font-black text-rose-400/80">{fmtUSD(stat.avgLoss)}</div>
                     </div>
                 </div>
                 <div className="pt-2 border-t border-zinc-900/50">
                     <div className="flex justify-between items-center">
                         <span className="text-ui-label text-zinc-500 uppercase font-black">Benchmark Alpha</span>
-                        <span className={`text-ui-body font-black ${stat.benchmarkAlpha >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>
+                        <span className={`text-ui-body font-black ${stat.benchmarkAlpha >= 0 ? 'text-indigo-500' : 'text-rose-400'}`}>
                             {fmtUSD(stat.benchmarkAlpha)}
                         </span>
                     </div>

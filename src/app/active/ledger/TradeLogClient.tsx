@@ -221,10 +221,10 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                                     {trade.exit > 0 ? trade.exit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                                                 </td>
                                                 <td className="px-6 py-3 ui-caption text-zinc-500 text-right tabular-nums">{trade.hold > 0 ? `${trade.hold}d` : '—'}</td>
-                                                <td className={`px-6 py-3 ui-metric text-right tabular-nums ${trade.pnl >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                                                <td className={`px-6 py-3 ui-metric text-right tabular-nums ${trade.pnl >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
                                                     {fmtUSD(trade.pnl)}
                                                 </td>
-                                                <td className={`px-6 py-3 ui-value font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-indigo-400/80' : 'text-rose-500/80') : 'text-zinc-800'}`}>
+                                                <td className={`px-6 py-3 ui-value font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-indigo-400/80' : 'text-rose-400/80') : 'text-zinc-800'}`}>
                                                     {trade.pct !== 0 ? fmtPct(trade.pct) : '—'}
                                                 </td>
                                             </tr>

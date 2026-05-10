@@ -50,7 +50,7 @@ export default function FloatingTooltip({ title, content, children }: Props) {
                     }}
                 >
                     <div className="bg-zinc-950 border border-zinc-800 rounded-sm shadow-2xl p-4 w-64 space-y-2 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500 border-b border-zinc-900 pb-2">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-100 border-b border-zinc-900 pb-2">
                             {title}
                         </div>
                         <div className="text-[11px] leading-relaxed text-zinc-400 font-mono italic">
