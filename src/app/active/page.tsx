@@ -142,7 +142,7 @@ function MetricParityGrid({ metrics }: { metrics: AlphaMetrics | BookTradeStats 
                     title="TWR (Time-Weighted)" 
                     content={`The compounded growth rate of $1. Ignores deposit timing.\n\nBenchmark VTI: ${fmtPct(vtiTwr)}\nAlpha: ${fmtPct(metrics.twr - vtiTwr)}`}
                 >
-                    <MetricTile label="TWR" value={fmtPct(metrics.twr)} color={metrics.twr >= vtiTwr ? 'text-active-accent' : 'text-active-risk'} />
+                    <MetricTile label="TWR" value={fmtPct(metrics.twr)} color="text-zinc-100" />
                 </FloatingTooltip>
 
                 <FloatingTooltip 
