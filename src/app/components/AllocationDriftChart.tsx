@@ -24,7 +24,7 @@ export default function AllocationDriftChart({ history }: { history: HistoryPoin
             <p className="text-[11px] text-zinc-500 leading-relaxed">
                 Longitudinal analysis of portfolio divergence from the target strategy. Tracks expected CAGR and stock weight across model versions to ensure institutional consistency.
             </p>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={180} minHeight={180}>
                 <LineChart data={history} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
                     <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10, fontFamily: 'monospace' }} tickLine={false} axisLine={false} />
                     <YAxis yAxisId="cagr" tickFormatter={v => `${(v * 100).toFixed(1)}%`} tick={{ fill: '#52525b', fontSize: 10, fontFamily: 'monospace' }} tickLine={false} axisLine={false} width={44} />

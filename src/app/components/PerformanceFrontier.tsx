@@ -83,7 +83,7 @@ export default function PerformanceFrontier({ coordinates }: Props) {
             {/* 1. THE CHART (2/3 Width) */}
             <div className="xl:col-span-2 space-y-10">
                 <div className="aspect-video min-h-[450px] relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                         <ScatterChart margin={{ top: 40, right: 40, bottom: 40, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                             <XAxis 

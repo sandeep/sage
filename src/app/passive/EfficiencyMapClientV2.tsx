@@ -138,7 +138,7 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
         <div className="space-y-12">
             {/* Chart Area */}
             <div className="aspect-video min-h-[500px] relative border border-zinc-900/50 bg-black/20 rounded-sm overflow-hidden">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={500}>
                     <ScatterChart 
                         margin={{ top: 80, right: 40, bottom: 60, left: 20 }}
                         onMouseMove={(e: any) => {

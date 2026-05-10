@@ -67,7 +67,7 @@ export default function StrategyEvolutionChart({ history }: Props) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                 <div className="lg:col-span-2 h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                         <BarChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: -20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                             <XAxis 
