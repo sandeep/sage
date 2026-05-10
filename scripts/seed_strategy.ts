@@ -1,5 +1,5 @@
 
-import db from './src/lib/db/client';
+import db from '../src/lib/db/client';
 
 const STRATEGY = {
   "Stock": {
