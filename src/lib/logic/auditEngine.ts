@@ -87,10 +87,12 @@ export async function generateAuditReport(): Promise<AuditReport> {
     });
 
     // ── 3. FULL HISTORY (Simba Proxy - Basis for Frontier Chart) ──────────────
-    const portFull = calculateHistoricalProxyReturns(currentWeights, 50);
-    const targetFull = calculateHistoricalProxyReturns(targetWeightsFlat, 50);
+    const allYears = Object.keys(simbaData.asset_classes.TSM.returns).sort((a, b) => parseInt(a) - parseInt(b));
+    const fullHorizonYears = allYears.length;
+    const portFull = calculateHistoricalProxyReturns(currentWeights, fullHorizonYears);
+    const targetFull = calculateHistoricalProxyReturns(targetWeightsFlat, fullHorizonYears);
     
-    // Mathematically align volatility with the MVO solver (exactly 50 years sample std dev)
+    // Mathematically align volatility with the MVO solver (exactly full history sample std dev)
     const stdDev = (arr: number[]) => {
         const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
         return Math.sqrt(arr.reduce((a, v) => a + Math.pow(v - mean, 2), 0) / arr.length);
@@ -99,9 +101,9 @@ export async function generateAuditReport(): Promise<AuditReport> {
     const portFullVol = stdDev(portFull.annualReturns);
     const targetFullVol = stdDev(targetFull.annualReturns);
     
-    // We need VTI returns for the exact same 50 years to align Market dot
-    const vtiRet50 = portFull.years.map(y => (simbaData as any).asset_classes['VTI']?.returns[y] ?? (simbaData as any).asset_classes['TSM']?.returns[y] ?? 0);
-    const vtiFullVol = stdDev(vtiRet50);
+    // We need VTI returns for the exact same years to align Market dot
+    const vtiRetFull = portFull.years.map(y => (simbaData as any).asset_classes['VTI']?.returns[y] ?? (simbaData as any).asset_classes['TSM']?.returns[y] ?? 0);
+    const vtiFullVol = stdDev(vtiRetFull);
 
     horizons.push({
         horizon: 'FULL HISTORY',
@@ -162,7 +164,7 @@ export async function generateAuditReport(): Promise<AuditReport> {
 
     const assetClasses = (simbaData as any).asset_classes;
     const availableYears = Object.keys(assetClasses.TSM.returns).sort((a, b) => parseInt(a) - parseInt(b));
-    const targetYears = availableYears.slice(-50);
+    const targetYears = availableYears; // Use all available history for the MVO bridge too
 
     async function getFrontier(universe: string[] | Set<string>) {
         const returnMatrix: Record<string, number[]> = {};

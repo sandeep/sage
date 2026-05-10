@@ -47,7 +47,7 @@ export default function CrisisStressTableV2({ crisisData, totalValue }: {
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-accent">Strategy</th>
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-risk">Actual</th>
                             <th className="px-10 py-4 text-right border-l border-zinc-900/50 text-risk bg-risk/5 w-[300px]">
-                                Addl. Capital at Risk
+                                Additional capital risk due to strategy drift
                             </th>
                         </tr>
                     </thead>

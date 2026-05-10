@@ -119,38 +119,40 @@ export async function GET(req: NextRequest) {
     }
 
     // ── LONG-RUN TAB (Simba annual data) ──────────────────────────────────
-    const metrics = calculateHierarchicalMetrics();
+    const { generateAuditReport } = await import('@/lib/logic/auditEngine');
+    const report = await generateAuditReport();
+    const { horizons, annualReturns } = report;
+
     const currentWeights: Record<string, number> = {};
-    metrics?.filter(m => m.level === 2).forEach(m => {
+    const metrics = (await import('@/lib/logic/xray')).calculateHierarchicalMetrics();
+    metrics?.filter(m => m.level === 2 || m.label === 'Cash').forEach(m => {
         if (m.actualPortfolio > 0) currentWeights[m.label] = m.actualPortfolio;
     });
 
-    const targetSimba = simulateSimbaAllocation(targetWeights, simbaData);
-    const actualSimba = simulateSimbaAllocation(currentWeights, simbaData);
+    // Use calculateHistoricalProxyReturns directly for Simba simulations to avoid intersection drops
+    const { calculateHistoricalProxyReturns } = await import('@/lib/logic/simbaEngine');
+    const allYears = Object.keys(simbaData).flatMap(k => Object.keys(simbaData[k].returns)).sort((a, b) => parseInt(a) - parseInt(b));
+    const uniqueYears = [...new Set(allYears)];
+    const horizonYears = uniqueYears.length;
+
+    const targetSimba = calculateHistoricalProxyReturns(targetWeights, horizonYears);
+    const actualSimba = calculateHistoricalProxyReturns(currentWeights, horizonYears);
     
-    const canonicalYears = targetSimba ? targetSimba.years : [];
+    const canonicalYears = targetSimba.years;
     if (canonicalYears.length === 0) {
         return Response.json({ error: "No historical data available for this allocation." }, { status: 400 });
     }
 
-    const vtiEntry = simbaData['VTI'];
+    const vtiEntry = simbaData['VTI'] || simbaData['TSM'];
     const vtiReturnsArr = canonicalYears.map(y => vtiEntry.returns[String(y)] ?? 0);
 
-    const targetMetrics = targetSimba
-        ? metricsFromSimba(targetSimba.annualReturns, vtiReturnsArr, canonicalYears)
-        : null;
+    const targetMetrics = metricsFromSimba(targetSimba.annualReturns, vtiReturnsArr, canonicalYears);
+    const actualMetrics = metricsFromSimba(actualSimba.annualReturns, vtiReturnsArr, canonicalYears);
 
-    const actualMetrics = actualSimba
-        ? metricsFromSimba(actualSimba.annualReturns, vtiReturnsArr, canonicalYears)
-        : null;
-
-    let proposedSimba: ReturnType<typeof simulateSimbaAllocation> = null;
     let proposedMetrics: PortfolioMetrics | null = null;
     if (draftWeights) {
-        proposedSimba = simulateSimbaAllocation(draftWeights, simbaData);
-        if (proposedSimba) {
-            proposedMetrics = metricsFromSimba(proposedSimba.annualReturns, vtiReturnsArr, canonicalYears);
-        }
+        const proposedSimba = calculateHistoricalProxyReturns(draftWeights, horizonYears);
+        proposedMetrics = metricsFromSimba(proposedSimba.annualReturns, vtiReturnsArr, canonicalYears);
     }
 
     const vtiAnnualReturnsRecord: Record<string, number> = {};
@@ -160,15 +162,15 @@ export async function GET(req: NextRequest) {
         name: c.name,
         years: c.years,
         vti:      computeCrisisDrawdown(vtiAnnualReturnsRecord, c.years, true),
-        target:   targetMetrics   ? computeCrisisDrawdown(targetMetrics.annualReturns,   c.years) : null,
-        actual:   actualMetrics   ? computeCrisisDrawdown(actualMetrics.annualReturns,   c.years) : null,
+        target:   computeCrisisDrawdown(annualReturns.target,   c.years, false, targetWeights),
+        actual:   computeCrisisDrawdown(annualReturns.actual,   c.years, false, currentWeights),
         proposed: proposedMetrics ? computeCrisisDrawdown(proposedMetrics.annualReturns, c.years) : null,
     }));
 
     const vtiNav = navFromAnnualReturns(vtiReturnsArr);
-    const targetNavArr = targetSimba ? navFromAnnualReturns(targetSimba.annualReturns) : null;
-    const actualNavArr = actualSimba ? navFromAnnualReturns(actualSimba.annualReturns) : null;
-    const proposedNavArr = proposedSimba ? navFromAnnualReturns(proposedSimba.annualReturns) : null;
+    const targetNavArr = navFromAnnualReturns(targetSimba.annualReturns);
+    const actualNavArr = navFromAnnualReturns(actualSimba.annualReturns);
+    const proposedNavArr = proposedMetrics ? navFromAnnualReturns(Object.values(proposedMetrics.annualReturns)) : null;
 
     const navSeries = canonicalYears.map((year, i) => ({
         t: String(year),
