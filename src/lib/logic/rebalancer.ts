@@ -123,11 +123,12 @@ async function generateV2Directives(metrics: any[], accounts: any[]): Promise<Di
     feeRisks.forEach(risk => {
         directives.push({
             type: 'OPTIMIZATION',
-            description: `Swap ${risk.currentTicker} → ${risk.betterTicker} in Fidelity Individual`, // Heuristic account mapping
+            description: `Swap ${risk.currentTicker} → ${risk.betterTicker} in ${risk.accountName}`,
             priority: 'MEDIUM',
             reasoning: `Eliminate ${risk.savingsBps.toFixed(1)} bps Excess Expense Ratio`,
             link_key: risk.currentTicker,
-            amount: risk.potentialSavings
+            amount: risk.potentialSavings,
+            account_id: risk.accountId
         });
     });
 
@@ -139,7 +140,8 @@ async function generateV2Directives(metrics: any[], accounts: any[]): Promise<Di
             priority: issue.type === 'LEAKAGE' ? 'HIGH' : 'MEDIUM',
             reasoning: `Structural ${issue.type}: Asset belongs in tax-sheltered venue`,
             link_key: issue.ticker,
-            amount: issue.holdingValue
+            amount: issue.holdingValue,
+            account_id: issue.accountId
         });
     });
 

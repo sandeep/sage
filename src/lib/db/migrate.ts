@@ -16,7 +16,9 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         canonical     TEXT NOT NULL,
         description   TEXT,
         asset_type    TEXT,
+        geography     TEXT,
         weights       TEXT NOT NULL,
+        proxy_weights TEXT,
         is_core       INTEGER DEFAULT 0,
         index_tracked TEXT,
         created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -25,7 +27,14 @@ export function runMigrations(db: InstanceType<typeof Database>) {
 
     db.exec(`CREATE TABLE IF NOT EXISTS ticker_meta (
         ticker           TEXT PRIMARY KEY,
-        fetched_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+        fetched_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+        name             TEXT,
+        yield            REAL,
+        er               REAL,
+        return1y         REAL,
+        fiftyTwoWeekLow  REAL,
+        fiftyTwoWeekHigh REAL,
+        close            REAL
     )`);
 
     db.exec(`CREATE TABLE IF NOT EXISTS directives (
@@ -60,7 +69,9 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         created_at  TEXT DEFAULT (datetime('now')),
         label       TEXT NOT NULL,
-        snapshot    TEXT NOT NULL
+        snapshot    TEXT NOT NULL,
+        start_date  TEXT,
+        end_date    TEXT
     )`);
 
     db.exec(`CREATE TABLE IF NOT EXISTS price_history (

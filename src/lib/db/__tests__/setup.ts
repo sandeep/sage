@@ -19,6 +19,10 @@ export function setupTestDb() {
         DELETE FROM directives;
         DELETE FROM simulation_cache;
         DELETE FROM wash_sale_lockouts;
+        DELETE FROM account_instrument_allowlist;
+        DELETE FROM etf_composition;
+        DELETE FROM snapshot_metadata;
+        DELETE FROM performance_snapshots;
     `);
 
     // 3. Seed Baselines

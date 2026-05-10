@@ -68,14 +68,14 @@ export default async function StructuralCostCenter() {
                                 <div key={i} className="flex flex-col bg-zinc-900/20 rounded-sm border border-zinc-900/50 overflow-hidden hover:border-zinc-700 transition-colors">
                                     <div className="p-6 space-y-4">
                                         <div className="space-y-1">
-                                            <div className="text-ui-label font-black text-white uppercase tracking-tighter">Swap {risk.currentTicker} → {risk.betterTicker}</div>
+                                            <div className="text-ui-label font-black text-white uppercase tracking-tighter">Swap {risk.currentTicker} → {risk.betterTicker} in {risk.accountName}</div>
                                             <div className="ui-caption text-zinc-500 uppercase tracking-widest">
                                                 Eliminate {risk.savingsBps.toFixed(1)} bps from position 
                                                 <span className="text-emerald-500 ml-2">(↓ {fmtUSD(risk.potentialSavings)}/yr Fund Management Cost)</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <Link href="/#execution-queue" className="w-full text-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] border-t border-emerald-500/10 transition-all">
+                                    <Link href={`/#execution-queue?account_id=${risk.accountId}`} className="w-full text-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] border-t border-emerald-500/10 transition-all">
                                         View Trade →
                                     </Link>
                                 </div>
@@ -99,7 +99,7 @@ export default async function StructuralCostCenter() {
                                             <div className="ui-caption text-zinc-600 uppercase tracking-widest">Preferred location: {issue.preferredAccountType}</div>
                                         </div>
                                     </div>
-                                    <Link href="/#execution-queue" className="w-full text-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] border-t border-emerald-500/10 transition-all">
+                                    <Link href={`/#execution-queue?account_id=${issue.accountId}`} className="w-full text-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] border-t border-emerald-500/10 transition-all">
                                         View Trade →
                                     </Link>
                                 </div>

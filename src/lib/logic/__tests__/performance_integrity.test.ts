@@ -12,7 +12,7 @@ describe('Performance Engine - Ground Truth Benchmark', () => {
 
     it('should accurately calculate 10% return and matching value for a linear price series', () => {
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc1', 'FIDELITY', 'TAXABLE')").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type) VALUES ('acc1', 'GLD', 100, 'EQUITY')").run();
+        db.prepare("INSERT INTO holdings_ledger (account_id, ticker, quantity, asset_type, snapshot_date) VALUES ('acc1', 'GLD', 100, 'EQUITY', '2024-01-10')").run();
         
         // Price goes from 100 to 110 (10% return) over 10 days
         const dates = [

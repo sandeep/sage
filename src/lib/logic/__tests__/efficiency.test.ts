@@ -11,9 +11,10 @@ describe('efficiency', () => {
 
     it('calculates tax drag when inefficient assets are in taxable accounts', () => {
         // Setup: $100k REIT in Taxable, with a Roth available (so it's flagged as misplaced)
+        const today = new Date().toISOString().split('T')[0];
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc1', 'FIDELITY', 'TAXABLE')").run();
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc2', 'FIDELITY', 'ROTH')").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc1', 'FSRNX', 1000, 'EQUITY', 100000)").run();
+        db.prepare("INSERT INTO holdings_ledger (account_id, ticker, quantity, asset_type, market_value, snapshot_date) VALUES ('acc1', 'FSRNX', 1000, 'EQUITY', 100000, ?)").run(today);
         db.prepare("INSERT INTO asset_registry (ticker, canonical, weights, asset_type) VALUES ('FSRNX', 'REIT', '{\"REIT\":1.0}', 'ETF')").run();
         db.prepare("INSERT INTO ticker_meta (ticker, yield, er) VALUES ('FSRNX', 0.04, 0.0007)").run();
 

@@ -12,7 +12,7 @@ describe('getTaxPlacementIssues', () => {
     it('flags REIT in TAXABLE account as misplaced', () => {
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc1', 'FIDELITY', 'TAXABLE')").run();
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc2', 'FIDELITY', 'ROTH')").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc1', 'FSRNX', 100, 'EQUITY', 5000)").run();
+        db.prepare("INSERT INTO holdings_ledger (account_id, ticker, quantity, asset_type, market_value, snapshot_date) VALUES ('acc1', 'FSRNX', 100, 'EQUITY', 5000, '2024-01-01')").run();
         db.prepare("INSERT INTO asset_registry (ticker, canonical, weights, asset_type) VALUES ('FSRNX', 'REIT', '{\"REIT\":1.0}', 'ETF')").run();
 
         const issues = getTaxPlacementIssues();
@@ -25,7 +25,7 @@ describe('getTaxPlacementIssues', () => {
 
     it('does not flag VTI in TAXABLE as misplaced — it belongs there', () => {
         db.prepare("INSERT INTO accounts (id, provider, tax_character) VALUES ('acc1', 'FIDELITY', 'TAXABLE')").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc1', 'VTI', 100, 'EQUITY', 5000)").run();
+        db.prepare("INSERT INTO holdings_ledger (account_id, ticker, quantity, asset_type, market_value, snapshot_date) VALUES ('acc1', 'VTI', 100, 'EQUITY', 5000, '2024-01-01')").run();
         db.prepare("INSERT INTO asset_registry (ticker, canonical, weights, asset_type) VALUES ('VTI', 'Total Stock', '{\"Total Stock Market\":1.0}', 'ETF')").run();
 
         const issues = getTaxPlacementIssues();

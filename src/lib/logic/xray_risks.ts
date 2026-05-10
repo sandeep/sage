@@ -115,24 +115,26 @@ export interface ExpenseRisk {
     betterEr: number;
     savingsBps: number;
     potentialSavings: number;
+    // New Fields
+    accountId: string;
+    accountName: string;
 }
 
 export function getExpenseRisks(): ExpenseRisk[] {
-    const allHoldings = getHoldings() as any[];
-    const holdings = Array.from(
-        allHoldings.reduce((acc, h) => {
-            if (!acc.has(h.ticker)) {
-                acc.set(h.ticker, { ticker: h.ticker, quantity: 0, market_value: 0 });
-            }
-            const existing = acc.get(h.ticker);
-            existing.quantity += h.quantity || 0;
-            existing.market_value += h.market_value || 0;
-            return acc;
-        }, new Map()).values()
-    ) as { ticker: string; quantity: number; market_value: number | null }[];
+    const holdings = getHoldings() as { 
+        ticker: string; 
+        quantity: number; 
+        market_value: number | null;
+        nickname: string;
+        account_id: string;
+    }[];
 
     const tickerMap = getTickerMap();
-    const metaList = db.prepare(`SELECT t.ticker, t.er, ar.custom_er FROM ticker_meta t LEFT JOIN asset_registry ar ON t.ticker = ar.ticker`).all() as Array<{ ticker: string, er: number | null, custom_er: number | null }>;
+    const metaRows = db.prepare(`SELECT t.ticker, t.er, ar.custom_er FROM ticker_meta t LEFT JOIN asset_registry ar ON t.ticker = ar.ticker`).all() as Array<{ ticker: string, er: number | null, custom_er: number | null }>;
+    const metaMap = new Map<string, { er: number | null, custom_er: number | null }>();
+    for (const row of metaRows) {
+        metaMap.set(row.ticker, { er: row.er, custom_er: row.custom_er });
+    }
 
     const risks: ExpenseRisk[] = [];
 
@@ -140,7 +142,7 @@ export function getExpenseRisks(): ExpenseRisk[] {
         const val = resolveValue(h.ticker, h.quantity, h.market_value);
         if (!val || val < 1000) return;
 
-        const currentMeta = metaList.find(m => m.ticker === h.ticker);
+        const currentMeta = metaMap.get(h.ticker);
         const currentEr = currentMeta?.custom_er ?? currentMeta?.er;
         if (currentEr == null) return;
 
@@ -155,7 +157,7 @@ export function getExpenseRisks(): ExpenseRisk[] {
         for (const [altTicker, altConfig] of Object.entries(tickerMap)) {
             if (altTicker === h.ticker) continue;
             if ((altConfig.weights[primaryCat] || 0) < 0.8) continue;
-            const altMeta = metaList.find(m => m.ticker === altTicker);
+            const altMeta = metaMap.get(altTicker);
             const altEr = altMeta?.custom_er ?? altMeta?.er;
             if (altEr == null) continue;
             if (altEr < currentEr && (!bestAlt || altEr < bestAlt.er)) {
@@ -170,7 +172,10 @@ export function getExpenseRisks(): ExpenseRisk[] {
                 betterTicker: bestAlt.ticker,
                 betterEr: bestAlt.er,
                 savingsBps: (currentEr - bestAlt.er) * 10000,
-                potentialSavings: val * (currentEr - bestAlt.er)
+                potentialSavings: val * (currentEr - bestAlt.er),
+                // Capture Metadata
+                accountId: h.account_id,
+                accountName: h.nickname
             });
         }
     });
@@ -187,6 +192,7 @@ export interface TaxPlacementIssue {
     preferredAccountType: AccountType;
     holdingValue: number;
     type: 'LEAKAGE' | 'OPTIMIZATION';
+    accountId: string;
 }
 
 export function getTaxPlacementIssues(): TaxPlacementIssue[] {
@@ -240,6 +246,7 @@ export function getTaxPlacementIssues(): TaxPlacementIssue[] {
             preferredAccountType: preferredType,
             holdingValue,
             type,
+            accountId: row.account_id,
         });
     }
 
