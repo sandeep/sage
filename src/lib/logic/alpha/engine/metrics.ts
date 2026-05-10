@@ -129,6 +129,19 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
         };
     }
 
+    // ANCHORING: Find starting NAV and shadow VTI for the day PRIOR to the first row in the series
+    const firstDate = rows[0].date;
+    const anchorRow = db.prepare(`
+        SELECT nav FROM alpha_daily_pnl WHERE date < ? ORDER BY date DESC LIMIT 1
+    `).get(firstDate) as { nav: number } | undefined;
+
+    const shadowAnchorRow = db.prepare(`
+        SELECT value FROM alpha_shadow_vti WHERE date < ? ORDER BY date DESC LIMIT 1
+    `).get(firstDate) as { value: number } | undefined;
+
+    let currentNav = anchorRow ? anchorRow.nav : 0;
+    let initialShadowValue = shadowAnchorRow ? shadowAnchorRow.value : 0;
+
     let totalPnl = 0;
     let totalDeposited = 0;
     const dailyReturns: number[] = [];
@@ -138,8 +151,7 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const benchmarkData = await getVtiBenchmarkData();
     const benchmarkMap = new Map(benchmarkData.map(b => [b.date, b.dailyReturn]));
 
-    let currentNav = 0;
-    let peakNav = 0;
+    let peakNav = currentNav;
     let maxDrawdown = 0;
 
     for (const row of rows) {
@@ -190,13 +202,22 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const worst5Pct = sortedReturns.slice(0, count5Pct);
     const cvar95 = worst5Pct.reduce((a, b) => a + b, 0) / worst5Pct.length;
 
-    // Fetch latest shadow VTI
-    const latestShadow = db.prepare(`SELECT value, date FROM alpha_shadow_vti ORDER BY date DESC LIMIT 1`).get() as { value: number, date: string } | undefined;
-    const shadowNav = latestShadow ? latestShadow.value : 0;
+    // Fetch shadow VTI for the LAST date of the filter period
+    const lastDate = rows[rows.length - 1].date;
+    const shadowEndRow = db.prepare(`SELECT value FROM alpha_shadow_vti WHERE date <= ? ORDER BY date DESC LIMIT 1`).get(lastDate) as { value: number } | undefined;
+    const shadowNav = shadowEndRow ? shadowEndRow.value : 0;
+    
+    // Dollar Alpha for the specific period is: (Final NAV - Start NAV) - (Final Shadow - Start Shadow)
+    // Wait, the user wants to see the aggregate alpha as of that date.
     const dollarAlpha = currentNav - shadowNav;
 
     // Calculate MWR
     const cashflows = rows.filter(r => r.deposits !== 0).map(r => ({ date: r.date, amount: r.deposits }));
+    // For MWR over a period, we must include the opening balance as an inflow
+    if (anchorRow && anchorRow.nav > 0) {
+        cashflows.unshift({ date: firstDate, amount: anchorRow.nav });
+    }
+    
     const terminalDate = rows.length > 0 ? rows[rows.length - 1].date : new Date().toISOString().split('T')[0];
     const mwr = calculateMWR(cashflows, currentNav, terminalDate);
 

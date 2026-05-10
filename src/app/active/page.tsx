@@ -49,7 +49,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                 <div className="flex justify-between items-end border-b border-zinc-900 pb-8">
                     <div>
                         <h1 className="text-ui-hero">
-                            ACTIVE <span className="text-indigo-500">PERFORMANCE</span>
+                            ACTIVE <span className="text-active-accent">PERFORMANCE</span>
                         </h1>
                         <p className="text-ui-label !text-zinc-500 mt-2 uppercase tracking-[0.3em]">Active Performance vs Passive Allocation</p>
                     </div>
@@ -62,7 +62,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             key={y}
                             href={`/active${y === 'all' ? '' : `?year=${y}`}`}
                             className={`px-6 py-2 text-ui-label font-black uppercase tracking-widest transition-all ${
-                                (year === y || (!year && y === 'all')) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                                (year === y || (!year && y === 'all')) ? 'bg-active-accent text-white' : 'text-zinc-400 hover:text-zinc-200'
                             }`}
                         >
                             {y}
@@ -77,7 +77,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                         <MetricTile 
                             label="Total P&L" 
                             value={fmtUSD(metrics.totalPnl)} 
-                            color={metrics.totalPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'} 
+                            color={metrics.totalPnl >= 0 ? 'text-active-accent' : 'text-active-risk'} 
                         />
 
                         <FloatingTooltip 
@@ -87,7 +87,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             <MetricTile 
                                 label="Dollar Alpha" 
                                 value={fmtUSD(metrics.dollarAlpha)} 
-                                color={metrics.dollarAlpha >= 0 ? 'text-indigo-400' : 'text-rose-400'}
+                                color={metrics.dollarAlpha >= 0 ? 'text-active-accent' : 'text-active-risk'}
                             />
                         </FloatingTooltip>
                         
@@ -133,7 +133,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             title="CVaR 95% (Risk)" 
                             content="The average loss expected in the worst 5% of trading days. If this is -3%, expect a -3% hit on a truly bad day."
                         >
-                            <MetricTile label="CVaR 95%" value={fmtPct(metrics.cvar95)} color="text-rose-400" />
+                            <MetricTile label="CVaR 95%" value={fmtPct(metrics.cvar95)} color="text-active-risk" />
                         </FloatingTooltip>
 
                         <FloatingTooltip 
@@ -147,7 +147,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             title="Max Drawdown" 
                             content="The deepest peak-to-trough valley hit. Compare to VTI's history (e.g. -20% in 2022) to judge your relative resilience."
                         >
-                            <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-rose-400" />
+                            <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-active-risk" />
                         </FloatingTooltip>
                     </div>
                 </section>
@@ -202,7 +202,7 @@ function BookStatCard({ stat }: { stat: any }) {
     return (
         <div className="bg-zinc-950/50 border border-zinc-900 rounded-sm shadow-2xl overflow-hidden h-full">
             <div className="bg-zinc-900/50 px-6 py-3 border-b border-zinc-900 flex justify-between items-center">
-                <span className="text-ui-label font-black uppercase tracking-widest text-indigo-400">{stat.book}</span>
+                <span className="text-ui-label font-black uppercase tracking-widest text-active-accent">{stat.book}</span>
                 <div className="flex items-center gap-3">
                     {stat.distinctTickerCount > 0 && (
                         <span className="text-ui-caption text-zinc-600 font-black uppercase tracking-widest border-r border-zinc-800 pr-3">
@@ -215,7 +215,7 @@ function BookStatCard({ stat }: { stat: any }) {
             <div className="p-6 space-y-4">
                 <div className="flex justify-between items-end border-b border-zinc-900/50 pb-2">
                     <span className="text-ui-label text-zinc-500 uppercase">Net Profit</span>
-                    <span className={`text-ui-data font-black ${stat.totalNetPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
+                    <span className={`text-ui-data font-black ${stat.totalNetPnl >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>
                         {fmtUSD(stat.totalNetPnl)}
                     </span>
                 </div>
@@ -242,17 +242,17 @@ function BookStatCard({ stat }: { stat: any }) {
                     </div>
                     <div className="space-y-1">
                         <span className="text-ui-label text-zinc-600 uppercase font-black">Avg Win</span>
-                        <div className="text-ui-body font-black text-indigo-500/80">{fmtUSD(stat.avgWin)}</div>
+                        <div className="text-ui-body font-black text-active-accent/80">{fmtUSD(stat.avgWin)}</div>
                     </div>
                     <div className="space-y-1">
                         <span className="text-ui-label text-zinc-600 uppercase font-black">Avg Loss</span>
-                        <div className="text-ui-body font-black text-rose-400/80">{fmtUSD(stat.avgLoss)}</div>
+                        <div className="text-ui-body font-black text-active-risk/80">{fmtUSD(stat.avgLoss)}</div>
                     </div>
                 </div>
                 <div className="pt-2 border-t border-zinc-900/50">
                     <div className="flex justify-between items-center">
                         <span className="text-ui-label text-zinc-500 uppercase font-black">Benchmark Alpha</span>
-                        <span className={`text-ui-body font-black ${stat.benchmarkAlpha >= 0 ? 'text-indigo-500' : 'text-rose-400'}`}>
+                        <span className={`text-ui-body font-black ${stat.benchmarkAlpha >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>
                             {fmtUSD(stat.benchmarkAlpha)}
                         </span>
                     </div>

@@ -38,6 +38,10 @@
   --color-liquidity: var(--liquidity);
   --color-derivative: var(--derivative);
 
+  /* Active Console Tokens */
+  --color-active-accent: #6366f1; /* Indigo-500 */
+  --color-active-risk: #fb7185;   /* Rose-400 */
+
   --font-mono: "JetBrains Mono", "Geist Mono", "Fira Code", ui-monospace, monospace;
   --font-sans: var(--font-inter), system-ui, sans-serif;
 
