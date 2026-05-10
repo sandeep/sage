@@ -52,7 +52,7 @@ export default function AlphaNavChart({ data }: Props) {
 
     return (
         <div className="w-full h-full font-mono">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={400}>
                 <LineChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                     <XAxis 
@@ -89,10 +89,10 @@ export default function AlphaNavChart({ data }: Props) {
                         name="Actual Portfolio"
                         type="monotone" 
                         dataKey="alphaNav" 
-                        stroke="#10b981" 
+                        stroke="#6366f1" 
                         strokeWidth={2} 
                         dot={false}
-                        activeDot={{ r: 4, fill: '#10b981', stroke: '#000' }}
+                        activeDot={{ r: 4, fill: '#6366f1', stroke: '#000' }}
                     />
                     <Line 
                         name="Equivalent VTI"

@@ -24,7 +24,7 @@ export default async function PerformanceBridgeV2() {
     return (
         <section className="space-y-12">
             <div className="flex justify-between items-end border-b border-zinc-900/50 pb-8">
-                <h2 className="text-ui-header text-white">Performance Bridge</h2>
+                <h2 className="text-ui-header text-white">Performance Bridge (Last 12 Months)</h2>
             </div>
             
             <PerformanceWaterfallClientV2

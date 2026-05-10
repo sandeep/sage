@@ -103,11 +103,20 @@ export async function reconstructShadowVti(todayOverride?: string) {
     console.log(`[ShadowVti] Reconstructed ${results.length} days of VTI history.`);
 }
 
-export async function getShadowVtiSeries(): Promise<{ date: string, value: number }[]> {
-    const rows = db.prepare(`
+export async function getShadowVtiSeries(startDate?: string, endDate?: string): Promise<{ date: string, value: number }[]> {
+    let query = `
         SELECT date, value
         FROM alpha_shadow_vti
-        ORDER BY date ASC
-    `).all() as { date: string, value: number }[];
+    `;
+
+    const params: any[] = [];
+    if (startDate && endDate) {
+        query += ` WHERE date >= ? AND date <= ?`;
+        params.push(startDate, endDate);
+    }
+
+    query += ` ORDER BY date ASC`;
+
+    const rows = db.prepare(query).all(...params) as { date: string, value: number }[];
     return rows;
 }

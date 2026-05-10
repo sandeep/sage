@@ -47,10 +47,17 @@ export interface AuditReport {
         points: Array<{ vol: number; return: number; isCurve: boolean }>;
         cloud: Array<{ vol: number; return: number; isCurve: boolean }>;
     };
+    globalFrontierPoints: {
+        points: Array<{ vol: number; return: number; isCurve: boolean }>;
+    };
     taxIssues: any[];
     feeRisks: any[];
     concentrationRisks: any[];
     currentCagr: number;
     targetCagr: number;
+    annualReturns: {
+        actual: Record<string, number>;
+        target: Record<string, number>;
+    };
     strategyHistory?: RegimeEvolution[];
 }

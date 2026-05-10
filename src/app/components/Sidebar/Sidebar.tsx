@@ -31,12 +31,13 @@ export default function Sidebar() {
   
   // Derive active console from URL
   const activeConsole = pathname.startsWith('/active') ? 'active' : 'passive';
+  const logoColor = activeConsole === 'active' ? 'text-indigo-500' : 'text-emerald-500';
 
   return (
     <aside className="w-[280px] h-screen border-r border-zinc-900 flex flex-col flex-shrink-0 bg-black">
       <div className="px-10 h-16 flex items-center border-b border-zinc-900 mb-10">
         <h1 className="text-ui-hero !text-xl">
-          SAGE <span className="text-emerald-500 !not-italic ml-1">v2.0</span>
+          SAGE <span className={`${logoColor} !not-italic ml-1`}>v2.0</span>
         </h1>
       </div>
 
@@ -47,8 +48,8 @@ export default function Sidebar() {
           <NavSection>
             <NavLink href="/passive" active={pathname === '/passive'}>Performance</NavLink>
             <NavLink href="/passive/portfolio" active={pathname === '/passive/portfolio'}>Portfolio</NavLink>
-            <NavLink href="/admin/allocation" active={pathname === '/admin/allocation'}>Strategy</NavLink>
-            <NavLink href="/admin/snapshots" active={pathname === '/admin/snapshots'}>History</NavLink>
+            <NavLink href="/passive/allocation" active={pathname === '/passive/allocation'}>Strategy</NavLink>
+            <NavLink href="/passive/snapshots" active={pathname === '/passive/snapshots'}>History</NavLink>
           </NavSection>
         ) : (
           <NavSection>

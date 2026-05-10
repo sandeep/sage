@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import Link from 'next/link';
 import { TradeLogEntry } from '@/lib/logic/alpha/engine/metrics';
 import FloatingTooltip from '../../components/FloatingTooltip';
 
@@ -15,6 +14,7 @@ type Tab = 'Futures' | 'Options' | 'Equities';
 
 export default function TradeLogClient({ initialFutures, initialOptions, initialEquities }: TradeLogClientProps) {
     const [activeTab, setActiveTab] = useState<Tab>('Futures');
+    const [activeYear, setActiveYear] = useState<string>('all');
     const [sortField, setSortField] = useState<keyof TradeLogEntry>('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -24,6 +24,10 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                       activeTab === 'Options' ? initialOptions :
                       initialEquities;
 
+        if (activeYear !== 'all') {
+            current = current.filter(d => d.date.startsWith(activeYear));
+        }
+
         return [...current].sort((a, b) => {
             const valA = a[sortField] ?? '';
             const valB = b[sortField] ?? '';
@@ -31,7 +35,9 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
             const res = valA < valB ? -1 : 1;
             return sortDir === 'asc' ? res : -res;
         });
-    }, [activeTab, initialFutures, initialOptions, initialEquities, sortField, sortDir]);
+    }, [activeTab, initialFutures, initialOptions, initialEquities, sortField, sortDir, activeYear]);
+
+    const years = ['all', '2026', '2025', '2024'];
 
     // Group by Year for UI
     const groupedData = useMemo(() => {
@@ -85,23 +91,19 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
             <div className="flex justify-between items-end border-b border-zinc-900 pb-8">
                 <div>
                     <h1 className="text-ui-hero">
-                        TRADING <span className="text-emerald-500">LEDGER</span>
+                        TRADING <span className="text-indigo-500">LEDGER</span>
                     </h1>
-                    <div className="flex items-center gap-4 mt-4">
-                        <Link href="/alpha" className="text-ui-label hover:text-white transition-colors">← Dashboard</Link>
-                        <div className="w-px h-3 bg-zinc-800"></div>
-                        <span className="text-ui-label !text-zinc-600">
-                            {isSettlementBasis ? 'Basis: Daily Settlement' : 'Basis: Transaction Ledger'}
-                        </span>
-                    </div>
+                    <p className="text-ui-label !text-zinc-500 mt-2 uppercase tracking-[0.3em]">
+                        Transaction Ledger & Performance Audit
+                    </p>
                 </div>
                 <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded-sm">
                     {(['Futures', 'Options', 'Equities'] as Tab[]).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-                                activeTab === tab ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-zinc-200'
+                            className={`px-4 py-1.5 ui-label transition-all ${
+                                activeTab === tab ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
                             }`}
                         >
                             {tab}
@@ -110,13 +112,28 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                 </div>
             </div>
 
+            {/* Year Selector */}
+            <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded-sm gap-1 w-fit">
+                {years.map(y => (
+                    <button
+                        key={y}
+                        onClick={() => setActiveYear(y)}
+                        className={`px-6 py-2 text-ui-label font-black uppercase tracking-widest transition-all ${
+                            activeYear === y ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                    >
+                        {y}
+                    </button>
+                ))}
+            </div>
+
             {/* Top Summary */}
             {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <SummaryTile 
                         label="Total Realized" 
                         value={fmtUSD(stats.totalPnl)} 
-                        color={stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} 
+                        color={stats.totalPnl >= 0 ? 'text-indigo-400' : 'text-rose-400'} 
                     />
                     
                     <FloatingTooltip title="Win Rate" content="Percentage of trades that resulted in a positive P&L. Focuses on hit-rate integrity.">
@@ -156,9 +173,9 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                 {/* Year Sticky Header */}
                                 <tr className="bg-zinc-900/30">
                                     <td colSpan={8} className="px-6 py-2">
-                                        <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center gap-3">
+                                        <div className="ui-label text-indigo-500 flex items-center gap-3">
                                             <span>{year} Trading Session</span>
-                                            <div className="h-px bg-emerald-500/10 flex-1"></div>
+                                            <div className="h-px bg-indigo-500/10 flex-1"></div>
                                             <span className="text-zinc-600 italic normal-case font-normal">{trades.length} Actions</span>
                                         </div>
                                     </td>
@@ -174,49 +191,49 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                                 className={`transition-colors group ${isSettlementBasis ? 'cursor-pointer hover:bg-zinc-900/40' : 'hover:bg-zinc-900/20'}`}
                                                 onClick={() => isSettlementBasis && toggleRow(rowId)}
                                             >
-                                                <td className="px-6 py-3 text-xs text-zinc-400 font-bold whitespace-nowrap pl-10">
+                                                <td className="px-6 py-3 ui-value !text-zinc-400 font-bold whitespace-nowrap pl-10 tabular-nums">
                                                     {isSettlementBasis && (
-                                                        <span className="inline-block w-4 text-[8px] text-zinc-500">{isExpanded ? '▼' : '▶'}</span>
+                                                        <span className="inline-block w-4 ui-caption !text-zinc-500">{isExpanded ? '▼' : '▶'}</span>
                                                     )}
                                                     {trade.date}
                                                 </td>
                                                 <td className="px-6 py-3">
-                                                    <div className="text-xs font-black text-zinc-200">{trade.instrument}</div>
+                                                    <div className="ui-value font-black text-zinc-200">{trade.instrument}</div>
                                                     {trade.optionType && (
-                                                        <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                                                        <div className="ui-caption font-bold text-zinc-500 mt-0.5">
                                                             {trade.expiry} {trade.strike ? `$${trade.strike}` : ''} {trade.optionType}
                                                         </div>
                                                     )}
                                                 </td>
                                                 {!isSettlementBasis && (
-                                                    <td className="px-6 py-3 text-[10px]">
-                                                        <span className={`px-2 py-0.5 rounded-[2px] font-black tracking-tighter ${
+                                                    <td className="px-6 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-[2px] ui-label tracking-tighter ${
                                                             trade.direction === 'LONG' ? 'bg-zinc-800 text-zinc-200' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                                                         }`}>
                                                             {trade.direction}
                                                         </span>
                                                     </td>
                                                 )}
-                                                <td className="px-6 py-3 text-xs text-zinc-400 text-right tabular-nums">
+                                                <td className="px-6 py-3 ui-value !text-zinc-400 text-right tabular-nums">
                                                     {trade.entry > 0 ? trade.entry.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                                                 </td>
-                                                <td className="px-6 py-3 text-xs text-zinc-400 text-right tabular-nums">
+                                                <td className="px-6 py-3 ui-value !text-zinc-400 text-right tabular-nums">
                                                     {trade.exit > 0 ? trade.exit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                                                 </td>
-                                                <td className="px-6 py-3 text-xs text-zinc-500 text-right tabular-nums">{trade.hold > 0 ? `${trade.hold}d` : '—'}</td>
-                                                <td className={`px-6 py-3 text-sm font-black text-right tabular-nums ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                                <td className="px-6 py-3 ui-caption text-zinc-500 text-right tabular-nums">{trade.hold > 0 ? `${trade.hold}d` : '—'}</td>
+                                                <td className={`px-6 py-3 ui-metric text-right tabular-nums ${trade.pnl >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
                                                     {fmtUSD(trade.pnl)}
                                                 </td>
-                                                <td className={`px-6 py-3 text-xs font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-emerald-400/80' : 'text-rose-500/80') : 'text-zinc-800'}`}>
+                                                <td className={`px-6 py-3 ui-value font-black text-right tabular-nums ${trade.pct !== 0 ? (trade.pct >= 0 ? 'text-indigo-400/80' : 'text-rose-400/80') : 'text-zinc-800'}`}>
                                                     {trade.pct !== 0 ? fmtPct(trade.pct) : '—'}
                                                 </td>
                                             </tr>
                                             {isExpanded && (
-                                                <tr className="bg-zinc-950/80 border-l-2 border-emerald-500/30">
+                                                <tr className="bg-zinc-950/80 border-l-2 border-indigo-500/30">
                                                     <td colSpan={8} className="px-12 py-6">
                                                         <div className="flex flex-col items-center justify-center space-y-2 py-8 border border-dashed border-zinc-900 rounded-sm">
-                                                            <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Execution Proof Pending</div>
-                                                            <div className="text-[9px] text-zinc-600 uppercase">Import PDF Statement to reconcile individual fills</div>
+                                                            <div className="ui-label text-zinc-500">Execution Proof Pending</div>
+                                                            <div className="ui-caption text-zinc-600">Import PDF Statement to reconcile individual fills</div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -231,7 +248,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                 {data.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-zinc-700 space-y-2">
                         <div className="text-4xl">∅</div>
-                        <div className="text-[10px] uppercase tracking-widest font-black">No trades found for this book</div>
+                        <div className="ui-label tracking-widest font-black">No trades found for this book</div>
                     </div>
                 )}
             </div>
@@ -255,7 +272,7 @@ function SortHeader({ label, field, current, dir, onSort, align = 'left' }: {
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}>
                 {label}
                 {current === field && (
-                    <span className="text-emerald-500">{dir === 'asc' ? '↑' : '↓'}</span>
+                    <span className="text-indigo-500">{dir === 'asc' ? '↑' : '↓'}</span>
                 )}
             </div>
         </th>

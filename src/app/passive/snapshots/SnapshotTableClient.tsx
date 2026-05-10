@@ -54,7 +54,7 @@ export default function SnapshotTableClient({ rows, expansions }: Props) {
         setLabels(l => ({ ...l, [date]: trimmed }));
         setEditingDate(null);
         try {
-            const res = await fetch(`/api/admin/snapshots/${date}/label`, {
+            const res = await fetch(`/api/passive/snapshots/${date}/label`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ label: trimmed }),

@@ -98,16 +98,16 @@ export default function AllocationEditor() {
     });
 
     useEffect(() => {
-        fetch('/api/admin/allocation')
+        fetch('/api/passive/allocation')
             .then(r => r.json())
             .then((tree: Record<string, any>) => {
                 setOriginalTree(tree);
                 setDraftTree(structuredClone(tree));
             });
-        fetch('/api/admin/allocation/history')
+        fetch('/api/passive/allocation/history')
             .then(r => r.json())
             .then(setHistory);
-        fetch('/api/admin/actual-weights')
+        fetch('/api/passive/actual-weights')
             .then(r => r.json())
             .then(setActualWeights);
     }, []);
@@ -135,7 +135,7 @@ export default function AllocationEditor() {
     const handleReset = async () => {
         setSaving(true);
         try {
-            const r = await fetch('/api/admin/allocation');
+            const r = await fetch('/api/passive/allocation');
             const tree = await r.json();
             setOriginalTree(tree);
             setDraftTree(structuredClone(tree));
@@ -164,7 +164,7 @@ export default function AllocationEditor() {
         }
 
         setSaving(true); setSaveError(''); setSaveSuccess(false);
-        const res = await fetch('/api/admin/allocation', {
+        const res = await fetch('/api/passive/allocation', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(draftTree),
@@ -224,7 +224,7 @@ export default function AllocationEditor() {
                             hasChanges={hasChanges()} onAccept={handleAccept}
                         />
                         <div className="pt-8 border-t border-zinc-900">
-                            <div className="text-ui-label text-zinc-500 mb-8">Drift History</div>
+                            <div className="text-ui-label text-zinc-500 mb-8 uppercase tracking-[0.2em]">Strategic Divergence</div>
                             <AllocationDriftChart history={history} />
                         </div>
                     </div>
