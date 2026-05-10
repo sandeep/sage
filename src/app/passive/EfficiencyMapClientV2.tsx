@@ -135,8 +135,9 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
     if (!mounted) return null;
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-20">
-            <div className="xl:col-span-3 aspect-video min-h-[500px] relative border border-zinc-900/50 bg-black/20 rounded-sm overflow-hidden">
+        <div className="space-y-12">
+            {/* Chart Area */}
+            <div className="aspect-video min-h-[500px] relative border border-zinc-900/50 bg-black/20 rounded-sm overflow-hidden">
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart 
                         margin={{ top: 80, right: 40, bottom: 60, left: 20 }}
@@ -155,8 +156,30 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                         onMouseLeave={() => setHoveredPoint(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                        <XAxis type="number" dataKey="vol" name="Risk" unit="%" domain={[0, 0.25]} stroke="#3f3f46" fontSize={11} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 20 }} />
-                        <YAxis type="number" dataKey="return" name="Return" unit="%" domain={[0, 0.15]} stroke="#3f3f46" fontSize={11} tickFormatter={(v) => (v * 100).toFixed(0)} label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 10 }} />
+                        <XAxis 
+                            type="number" 
+                            dataKey="vol" 
+                            name="Risk" 
+                            unit="%" 
+                            domain={[0, 0.25]} 
+                            stroke="#3f3f46" 
+                            fontSize={10} 
+                            style={{ fontFamily: 'var(--font-mono)' }}
+                            tickFormatter={(v) => (v * 100).toFixed(0)} 
+                            label={{ value: 'ANNUALIZED VOLATILITY (RISK)', position: 'bottom', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 20, style: { fontFamily: 'var(--font-mono)' } }} 
+                        />
+                        <YAxis 
+                            type="number" 
+                            dataKey="return" 
+                            name="Return" 
+                            unit="%" 
+                            domain={[0, 0.15]} 
+                            stroke="#3f3f46" 
+                            fontSize={10} 
+                            style={{ fontFamily: 'var(--font-mono)' }}
+                            tickFormatter={(v) => (v * 100).toFixed(0)} 
+                            label={{ value: 'ANNUALIZED RETURN (REWARD)', angle: -90, position: 'left', fill: '#52525b', fontSize: 10, fontWeight: 700, offset: 10, style: { fontFamily: 'var(--font-mono)' } }} 
+                        />
                         
                         {/* 1. Cloud */}
                         <Scatter 
@@ -265,40 +288,36 @@ export default function EfficiencyMapClientV2({ coordinates, snapshotTrail, fron
                 </div>
             </div>
 
-            <div className="xl:col-span-1 space-y-16 pl-4 border-l border-zinc-900/30">
-                <div className="space-y-10">
-                    <div className="space-y-4">
-                        <div className="ui-caption text-zinc-500">Diagnostics</div>
-                        <h3 className="ui-header text-white leading-tight">Efficiency<br/>De-composition</h3>
+            {/* Diagnostics Underneath (Down-scaled to 11px/13px) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-zinc-900/30">
+                <div className="space-y-4">
+                    <div className="flex items-baseline gap-3">
+                        <div className="ui-label text-risk">Selection Error</div>
+                        <div className="ui-value font-bold text-white">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}%</div>
                     </div>
-                    
-                    <div className="space-y-12">
-                        <div className="space-y-2">
-                            <div className="ui-label text-risk">Selection Error</div>
-                            <div className="ui-metric text-white">-{Math.abs(Math.round((globalCeiling - localCeiling) * 1000) / 10)}%</div>
-                            <p className="ui-body text-zinc-400 mt-2">
-                                Gap between current assets and broad market potential. Missed yield due to asset class omission.
-                            </p>
-                        </div>
+                    <p className="ui-caption text-zinc-500 normal-case leading-relaxed">
+                        Gap between current assets and broad market potential. Missed yield due to asset class omission.
+                    </p>
+                </div>
 
-                        <div className="space-y-2">
-                            <div className="ui-label text-amber-500">Wrong Asset Mix (Historical)</div>
-                            <div className="ui-metric text-white">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}%</div>
-                            <p className="ui-body text-zinc-400 mt-2">
-                                The money you lose on average every year because your plan's percentages are mathematically imperfect.
-                            </p>
-                        </div>
+                <div className="space-y-4">
+                    <div className="flex items-baseline gap-3">
+                        <div className="ui-label text-amber-500">Wrong Asset Mix (Historical)</div>
+                        <div className="ui-value font-bold text-white">-{Math.abs(Math.round((localCeiling - coordinates.actual.return) * 1000) / 10)}%</div>
+                    </div>
+                    <p className="ui-caption text-zinc-500 normal-case leading-relaxed">
+                        The money you lose on average every year because your plan's percentages are mathematically imperfect.
+                    </p>
+                </div>
 
-                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-sm">
-                            <div className="ui-label text-emerald-500 mb-3 text-[10px] tracking-widest">Strategic Verdict</div>
-                            <div className="ui-body text-zinc-300">
-                                Your plan's weighting is mathematically strong (only <span className="text-white font-bold">{(executionError * 100).toFixed(1)}%</span> historical gap), 
-                                but you had a rough year (<span className="text-white font-bold">{(driftDrag1Y * 100).toFixed(1)}%</span> actual gap).
-                                <span className="block mt-4 text-zinc-500 italic text-[12px]">
-                                    You aren't just 'weighted wrong'—you're currently being punished by specific market conditions.
-                                </span>
-                            </div>
-                        </div>
+                <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-sm">
+                    <div className="ui-label text-emerald-500 mb-2 !text-[9px]">Strategic Verdict</div>
+                    <div className="ui-caption text-zinc-300 normal-case leading-relaxed">
+                        Your plan's weighting is mathematically strong (only <span className="text-white font-bold">{(executionError * 100).toFixed(1)}%</span> historical gap), 
+                        but you had a rough year (<span className="text-white font-bold">{(driftDrag1Y * 100).toFixed(1)}%</span> actual gap).
+                        <span className="block mt-2 text-zinc-500 italic text-[9px] uppercase tracking-tighter">
+                            You aren't just 'weighted wrong'—you're being punished by specific market conditions.
+                        </span>
                     </div>
                 </div>
             </div>
