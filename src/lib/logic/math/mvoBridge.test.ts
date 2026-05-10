@@ -13,6 +13,7 @@ describe('solveEfficientFrontier', () => {
     
     // Verify diversified points (not all extreme)
     const curvePoints = result.points.filter(p => p.isCurve);
+    console.log(`Generated ${curvePoints.length} frontier points.`);
   });
 
   it('should handle highly correlated assets', async () => {
