@@ -3,7 +3,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt import EfficientFrontier, risk_models, expected_returns, objective_functions
 
 def optimize():
     try:
@@ -22,14 +22,20 @@ def optimize():
 
         # Convert returns to DataFrame
         returns_df = pd.DataFrame(returns_dict)
-        if returns_df.empty:
-            print(json.dumps({"error": "Returns data is empty"}), file=sys.stderr)
-            return
+        
+        # ACADEMIC FIX: Drop assets with less than 10 years of data, then drop rows with any NaNs
+        # MVO requires a dense matrix.
+        returns_df = returns_df.dropna(thresh=10, axis=1)
+        returns_df = returns_df.dropna(axis=0)
+
+        if returns_df.empty or len(returns_df) < 5:
+            print(json.dumps({"error": "Insufficient overlapping historical data to compute covariance matrix."}), file=sys.stderr)
+            sys.exit(1)
 
         n_assets = len(returns_df.columns)
         if n_assets < 2:
-            print(json.dumps({"error": "At least two assets are required for optimization"}), file=sys.stderr)
-            return
+            print(json.dumps({"error": "At least two assets with overlapping data are required."}), file=sys.stderr)
+            sys.exit(1)
 
         # Institutional Fix: Our data is ALREADY annualized (Simba).
         # We must set frequency=1 to prevent double-compounding.
@@ -40,6 +46,7 @@ def optimize():
         
         # 1. Global Minimum Variance (GMV) Portfolio
         ef_min = EfficientFrontier(mu, S)
+        ef_min.add_objective(objective_functions.L2_reg, gamma=0.1) # Penalize concentration
         try:
             weights_min = ef_min.min_volatility()
             ret_min, vol_min, _ = ef_min.portfolio_performance()
@@ -49,17 +56,13 @@ def optimize():
 
         # 2. Efficient Frontier Points
         max_ret = mu.max()
-        min_ret = mu.min()
+        min_ret = ret_min if len(points) > 0 else mu.min()
         
-        if len(points) > 0:
-            start_ret = points[0]["return"]
-        else:
-            start_ret = min_ret
-
-        if max_ret > start_ret:
-            target_returns = np.linspace(start_ret, max_ret, 20)
+        if max_ret > min_ret:
+            target_returns = np.linspace(min_ret, max_ret, 30)
             for target in target_returns:
                 ef = EfficientFrontier(mu, S)
+                ef.add_objective(objective_functions.L2_reg, gamma=0.1) # Penalize concentration
                 try:
                     ef.efficient_return(target)
                     ret, vol, _ = ef.portfolio_performance()
@@ -67,10 +70,20 @@ def optimize():
                 except Exception:
                     continue
 
-        # 3. Opportunity Cloud (500 random portfolios)
+        # 3. Opportunity Cloud (2000 random portfolios for better density)
         cloud = []
-        for _ in range(500):
-            w = np.random.dirichlet(np.ones(n_assets), size=1)[0]
+        for i in range(2000):
+            # Mix standard Dirichlet (center-heavy) with exponential (boundary-heavy)
+            if i % 2 == 0:
+                w = np.random.dirichlet(np.ones(n_assets), size=1)[0]
+            else:
+                # Boundary sampling: force some assets to near-zero
+                raw_w = np.random.exponential(scale=1.0, size=n_assets)
+                mask = np.random.binomial(1, 0.5, size=n_assets)
+                w = raw_w * mask
+                if w.sum() == 0: w = np.ones(n_assets) # fallback
+                w = w / w.sum()
+                
             portfolio_return = np.dot(w, mu)
             portfolio_vol = np.sqrt(np.dot(w.T, np.dot(S, w)))
             cloud.append({
