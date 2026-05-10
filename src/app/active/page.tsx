@@ -49,7 +49,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                 <div className="flex justify-between items-end border-b border-zinc-900 pb-8">
                     <div>
                         <h1 className="text-ui-hero">
-                            ACTIVE <span className="text-emerald-500">PERFORMANCE</span>
+                            ACTIVE <span className="text-indigo-500">PERFORMANCE</span>
                         </h1>
                         <p className="text-ui-label !text-zinc-500 mt-2 uppercase tracking-[0.3em]">Active Performance vs Passive Allocation</p>
                     </div>
@@ -62,7 +62,7 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                             key={y}
                             href={`/active${y === 'all' ? '' : `?year=${y}`}`}
                             className={`px-6 py-2 text-ui-label font-black uppercase tracking-widest transition-all ${
-                                (year === y || (!year && y === 'all')) ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-zinc-200'
+                                (year === y || (!year && y === 'all')) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
                             }`}
                         >
                             {y}

@@ -91,7 +91,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
             <div className="flex justify-between items-end border-b border-zinc-900 pb-8">
                 <div>
                     <h1 className="text-ui-hero">
-                        TRADING <span className="text-emerald-500">LEDGER</span>
+                        TRADING <span className="text-indigo-500">LEDGER</span>
                     </h1>
                     <p className="text-ui-label !text-zinc-500 mt-2 uppercase tracking-[0.3em]">
                         Transaction Ledger & Performance Audit
@@ -103,7 +103,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-1.5 ui-label transition-all ${
-                                activeTab === tab ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-zinc-200'
+                                activeTab === tab ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
                             }`}
                         >
                             {tab}
@@ -119,7 +119,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                         key={y}
                         onClick={() => setActiveYear(y)}
                         className={`px-6 py-2 text-ui-label font-black uppercase tracking-widest transition-all ${
-                            activeYear === y ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-zinc-200'
+                            activeYear === y ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:text-zinc-200'
                         }`}
                     >
                         {y}
@@ -173,9 +173,9 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                 {/* Year Sticky Header */}
                                 <tr className="bg-zinc-900/30">
                                     <td colSpan={8} className="px-6 py-2">
-                                        <div className="ui-label text-emerald-500 flex items-center gap-3">
+                                        <div className="ui-label text-indigo-500 flex items-center gap-3">
                                             <span>{year} Trading Session</span>
-                                            <div className="h-px bg-emerald-500/10 flex-1"></div>
+                                            <div className="h-px bg-indigo-500/10 flex-1"></div>
                                             <span className="text-zinc-600 italic normal-case font-normal">{trades.length} Actions</span>
                                         </div>
                                     </td>
@@ -272,7 +272,7 @@ function SortHeader({ label, field, current, dir, onSort, align = 'left' }: {
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}>
                 {label}
                 {current === field && (
-                    <span className="text-emerald-500">{dir === 'asc' ? '↑' : '↓'}</span>
+                    <span className="text-indigo-500">{dir === 'asc' ? '↑' : '↓'}</span>
                 )}
             </div>
         </th>
