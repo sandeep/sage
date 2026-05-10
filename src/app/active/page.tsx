@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateAlphaMetrics, getBookTradeStats, getAlphaNavSeries } from '@/lib/logic/alpha/engine/metrics';
+import { calculateAlphaMetrics, getBookTradeStats, getAlphaNavSeries, AlphaMetrics, BookTradeStats } from '@/lib/logic/alpha/engine/metrics';
 import { getShadowVtiSeries } from '@/lib/logic/alpha/engine/shadowPortfolio';
 import AlphaNavChart from './AlphaNavChart';
 import FloatingTooltip from '../components/FloatingTooltip';
@@ -27,18 +27,12 @@ export default async function ActiveAlpha({ searchParams }: Props) {
     const alphaNavSeries = await getAlphaNavSeries(startDate, endDate);
     const shadowVtiSeries = await getShadowVtiSeries(startDate, endDate); 
 
-    // Align series for the chart
     const shadowMap = new Map(shadowVtiSeries.map(s => [s.date, s.value]));
-
     const chartData = alphaNavSeries.map(s => ({
         date: s.date,
         alphaNav: s.nav,
         shadowNav: shadowMap.get(s.date) || shadowVtiSeries[0]?.value || 0
     }));
-
-    const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
-    const fmtNum = (v: number) => v.toFixed(2);
-    const fmtUSD = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     const years = ['all', '2026', '2025', '2024'];
 
@@ -55,7 +49,6 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                     </div>
                 </div>
 
-                {/* Year Selector - Isolated Row */}
                 <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded-sm gap-1 w-fit">
                     {years.map(y => (
                         <Link 
@@ -70,118 +63,138 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                     ))}
                 </div>
 
-                {/* UNIFIED PERFORMANCE COMMAND CENTER */}
-                <section className="space-y-4">
-                    {/* Primary Performance Row */}
-                    <div className="ui-metric-grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-                        <MetricTile 
-                            label="Total P&L" 
-                            value={fmtUSD(metrics.totalPnl)} 
-                            color={metrics.totalPnl >= 0 ? 'text-active-accent' : 'text-active-risk'} 
-                        />
+                <div className="space-y-12">
+                    <section className="space-y-4">
+                        <div className="ui-section-header">
+                            <h2>Overall Performance</h2>
+                            <span>Aggregate Metrics across all Trading Books</span>
+                        </div>
+                        <MetricParityGrid metrics={metrics} />
+                    </section>
 
-                        <FloatingTooltip 
-                            title="Dollar Alpha" 
-                            content="The exact dollar amount you have gained or lost relative to a passive VTI strategy. Calculated by comparing your actual NAV to an equivalent portfolio that bought VTI on every deposit date."
-                        >
-                            <MetricTile 
-                                label="Dollar Alpha" 
-                                value={fmtUSD(metrics.dollarAlpha)} 
-                                color={metrics.dollarAlpha >= 0 ? 'text-active-accent' : 'text-active-risk'}
-                            />
-                        </FloatingTooltip>
-                        
-                        <FloatingTooltip 
-                            title="TWR (Time-Weighted)" 
-                            content="The compounded growth rate of $1. Ignores the timing of your deposits. Compare this directly to VTI to see if your trading is actually beating the market."
-                        >
-                            <MetricTile label="TWR" value={fmtPct(metrics.twr)} />
-                        </FloatingTooltip>
+                    <section className="space-y-8">
+                        <div className="ui-section-header">
+                            <h2>Performance By Book</h2>
+                            <span>Closed Trade Statistics vs Benchmarks</span>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {bookStats.map(stat => (
+                                <BookStatCard key={stat.book} stat={stat} />
+                            ))}
+                        </div>
+                    </section>
 
-                        <FloatingTooltip 
-                            title="MWR / IRR (Money-Weighted)" 
-                            content="Your personal internal rate of return. Unlike TWR, this IS affected by when you put money in. If MWR < TWR, your timing of deposits is hurting your net result."
-                        >
-                            <MetricTile label="MWR / IRR" value={fmtPct(metrics.mwr)} />
-                        </FloatingTooltip>
+                    <section>
+                        <div className="ui-section-header">
+                            <h2>NAV Curve</h2>
+                            <span>Actual vs Equivalent VTI</span>
+                        </div>
+                        <div className="bg-zinc-950/50 border border-zinc-900 p-6 rounded-sm shadow-2xl h-[450px] w-full relative">
+                            <AlphaNavChart data={chartData} />
+                        </div>
+                    </section>
+                </div>
 
-                        <FloatingTooltip 
-                            title="Sharpe Ratio" 
-                            content="Risk-adjusted return. > 1.0 is good, > 2.0 is institutional grade. A value of 0.2 means you're taking significant risk for very little reward."
-                        >
-                            <MetricTile label="Sharpe" value={fmtNum(metrics.sharpeRatio)} />
-                        </FloatingTooltip>
-
-                        <FloatingTooltip 
-                            title="Calmar Ratio" 
-                            content="Return vs Max Drawdown. > 0.5 is acceptable, > 1.0 is strong. It measures if you are 'paying' too much in drawdown for your gains."
-                        >
-                            <MetricTile label="Calmar" value={fmtNum(metrics.calmarRatio)} />
-                        </FloatingTooltip>
-                    </div>
-
-                    {/* Risk & Equivalent Portfolio Row */}
-                    <div className="ui-metric-grid grid-cols-1 md:grid-cols-4">
-                        <FloatingTooltip 
-                            title="Equivalent VTI Value" 
-                            content="The estimated value if 100% of Active deposits were put into VTI instead. This is the 'Opportunity Cost' baseline."
-                        >
-                            <MetricTile label="Equivalent VTI" value={fmtUSD(metrics.shadowNav)} color="text-zinc-100" />
-                        </FloatingTooltip>
-                        
-                        <FloatingTooltip 
-                            title="CVaR 95% (Risk)" 
-                            content="The average loss expected in the worst 5% of trading days. If this is -3%, expect a -3% hit on a truly bad day."
-                        >
-                            <MetricTile label="CVaR 95%" value={fmtPct(metrics.cvar95)} color="text-active-risk" />
-                        </FloatingTooltip>
-
-                        <FloatingTooltip 
-                            title="Volatility (Risk)" 
-                            content="The 'bumpiness' of your curve. VTI usually sits at 15-18%. High vol (>30%) suggests high leverage or concentration."
-                        >
-                            <MetricTile label="Volatility" value={fmtPct(metrics.volatility)} color="text-zinc-300" />
-                        </FloatingTooltip>
-
-                        <FloatingTooltip 
-                            title="Max Drawdown" 
-                            content="The deepest peak-to-trough valley hit. Compare to VTI's history (e.g. -20% in 2022) to judge your relative resilience."
-                        >
-                            <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-active-risk" />
-                        </FloatingTooltip>
-                    </div>
-                </section>
-
-                {/* Performance By Book */}
-                <section>
-                    <div className="ui-section-header">
-                        <h2>Performance By Book</h2>
-                        <span>Closed Trade Statistics vs Benchmarks</span>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {bookStats.map(stat => (
-                            <BookStatCard key={stat.book} stat={stat} />
-                        ))}
-                    </div>
-                </section>
-
-                {/* NAV Curve Section */}
-                <section>
-                    <div className="ui-section-header">
-                        <h2>NAV Curve</h2>
-                        <span>Actual vs Equivalent VTI</span>
-                    </div>
-                    <div className="bg-zinc-950/50 border border-zinc-900 p-6 rounded-sm shadow-2xl h-[450px] w-full relative">
-                        <AlphaNavChart data={chartData} />
-                    </div>
-                </section>
-
-                {/* Footer Meta */}
                 <div className="pt-12 border-t border-zinc-900 flex justify-between items-center text-ui-caption text-zinc-700 uppercase font-black tracking-[0.2em]">
                     <div>Sage Active v2.0</div>
                 </div>
             </div>
         </main>
+    );
+}
+
+const fmtUSD = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
+const fmtNum = (v: number) => v.toFixed(2);
+
+function MetricParityGrid({ metrics }: { metrics: AlphaMetrics | BookTradeStats }) {
+    const isBook = 'book' in metrics;
+    const vtiTwr = metrics.vtiTwr ?? 0;
+    const alpha = isBook ? (metrics as BookTradeStats).benchmarkAlpha : (metrics as AlphaMetrics).dollarAlpha;
+    const pnl = isBook ? (metrics as BookTradeStats).totalNetPnl : (metrics as AlphaMetrics).totalPnl;
+
+    return (
+        <div className="space-y-6">
+            {/* Top Row: The Bottom Line */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-zinc-950/50 border border-zinc-900 p-6 rounded-sm shadow-xl space-y-2">
+                    <span className="text-ui-label uppercase text-zinc-600 font-black tracking-widest">Total P&L</span>
+                    <div className={`text-ui-data font-black tracking-tighter ${pnl >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>{fmtUSD(pnl)}</div>
+                </div>
+                <div className="bg-zinc-950/50 border border-zinc-900 p-6 rounded-sm shadow-xl space-y-2">
+                    <FloatingTooltip 
+                        title="Dollar Alpha" 
+                        content={`The dollar amount gained/lost relative to a passive VTI strategy.\n\nBenchmark VTI Return: ${fmtPct(vtiTwr)}`}
+                    >
+                        <span className="text-ui-label uppercase text-zinc-600 font-black tracking-widest border-b border-zinc-800 border-dashed pb-0.5 cursor-help">Dollar Alpha</span>
+                    </FloatingTooltip>
+                    <div className={`text-ui-data font-black tracking-tighter ${alpha >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>{fmtUSD(alpha)}</div>
+                </div>
+            </div>
+
+            {/* Performance Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <FloatingTooltip 
+                    title="TWR (Time-Weighted)" 
+                    content={`The compounded growth rate of $1. Ignores deposit timing.\n\nBenchmark VTI: ${fmtPct(vtiTwr)}\nAlpha: ${fmtPct(metrics.twr - vtiTwr)}`}
+                >
+                    <MetricTile label="TWR" value={fmtPct(metrics.twr)} color={metrics.twr >= vtiTwr ? 'text-active-accent' : 'text-active-risk'} />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="MWR (IRR)" 
+                    content="Your internal rate of return, affected by deposit timing. If MWR < TWR, your entry timing is hurting you."
+                >
+                    <MetricTile label="MWR (IRR)" value={fmtPct(metrics.mwr)} />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Sharpe Ratio" 
+                    content="Risk-adjusted return. > 1.0 is good, > 2.0 is institutional. Measures reward per unit of volatility."
+                >
+                    <MetricTile label="Sharpe" value={fmtNum(metrics.sharpeRatio)} />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Calmar Ratio" 
+                    content="Return vs Max Drawdown. > 0.5 is acceptable, > 1.0 is strong."
+                >
+                    <MetricTile label="Calmar" value={fmtNum(metrics.calmarRatio)} />
+                </FloatingTooltip>
+            </div>
+
+            {/* Risk Row */}
+            <div className="grid grid-cols-3 gap-4">
+                <FloatingTooltip 
+                    title="CVaR 95% (Risk)" 
+                    content="The average loss expected in the worst 5% of trading days."
+                >
+                    <MetricTile label="CVaR 95%" value={fmtPct(metrics.cvar95)} color="text-active-risk" />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Volatility (Risk)" 
+                    content="The 'bumpiness' of your curve. VTI usually sits at 15-18%."
+                >
+                    <MetricTile label="Volatility" value={fmtPct(metrics.volatility)} color="text-zinc-300" />
+                </FloatingTooltip>
+
+                <FloatingTooltip 
+                    title="Max Drawdown" 
+                    content="The deepest peak-to-trough valley hit during this period."
+                >
+                    <MetricTile label="Max Drawdown" value={fmtPct(metrics.maxDrawdown)} color="text-active-risk" />
+                </FloatingTooltip>
+            </div>
+
+            {/* Execution Row */}
+            <div className="grid grid-cols-4 gap-4">
+                <MetricTile label="Win Rate" value={fmtPct(metrics.winRate)} />
+                <MetricTile label="Expected Value" value={fmtUSD(metrics.expectedValue)} color="text-zinc-400" />
+                <MetricTile label="Avg Win" value={fmtUSD(metrics.avgWin)} color="text-active-accent/80" />
+                <MetricTile label="Avg Loss" value={fmtUSD(metrics.avgLoss)} color="text-active-risk/80" />
+            </div>
+        </div>
     );
 }
 
@@ -194,11 +207,7 @@ function MetricTile({ label, value, color = 'text-white' }: { label: string, val
     );
 }
 
-function BookStatCard({ stat }: { stat: any }) {
-    const fmtUSD = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-    const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
-    const fmtNum = (v: number) => v.toFixed(2);
-
+function BookStatCard({ stat }: { stat: BookTradeStats }) {
     return (
         <div className="bg-zinc-950/50 border border-zinc-900 rounded-sm shadow-2xl overflow-hidden h-full flex flex-col">
             <div className="bg-zinc-900/50 px-6 py-3 border-b border-zinc-900 flex justify-between items-center shrink-0">
@@ -213,83 +222,8 @@ function BookStatCard({ stat }: { stat: any }) {
                 </div>
             </div>
             
-            <div className="p-6 space-y-6 flex-1 flex flex-col">
-                {/* Top Zone: The Bottom Line */}
-                <div className="grid grid-cols-2 gap-6 border-b border-zinc-900/50 pb-6 shrink-0">
-                    <div className="space-y-1">
-                        <span className="text-ui-label text-zinc-500 uppercase">Total P&L</span>
-                        <div className={`text-ui-data font-black ${stat.totalNetPnl >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>
-                            {fmtUSD(stat.totalNetPnl)}
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <FloatingTooltip 
-                            title="Dollar Alpha" 
-                            content="The exact dollar amount you have gained or lost relative to a passive VTI strategy. Calculated by comparing your actual NAV to an equivalent portfolio that bought VTI on every deposit date."
-                        >
-                            <span className="text-ui-label text-zinc-500 uppercase border-b border-zinc-800 border-dashed pb-0.5 cursor-help">Dollar Alpha</span>
-                        </FloatingTooltip>
-                        <div className={`text-ui-data font-black ${stat.benchmarkAlpha >= 0 ? 'text-active-accent' : 'text-active-risk'}`}>
-                            {fmtUSD(stat.benchmarkAlpha)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Middle Zone: Performance */}
-                <div className="space-y-4 shrink-0">
-                    <div className="text-ui-caption text-zinc-600 uppercase tracking-widest font-black">Performance</div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                            <FloatingTooltip 
-                                title="MWR (IRR)" 
-                                content="Your personal internal rate of return. Unlike TWR, this IS affected by when you put money in. If MWR < TWR, your timing of deposits is hurting your net result."
-                            >
-                                <span className="text-ui-label text-zinc-500 uppercase cursor-help border-b border-zinc-800 border-dashed pb-0.5">MWR</span>
-                            </FloatingTooltip>
-                            <div className="text-ui-body font-black text-zinc-300">{stat.mwr !== 0 ? fmtPct(stat.mwr) : '—'}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <FloatingTooltip 
-                                title="Sharpe Ratio" 
-                                content="Risk-adjusted return. > 1.0 is good, > 2.0 is institutional grade. A value of 0.2 means you're taking significant risk for very little reward."
-                            >
-                                <span className="text-ui-label text-zinc-500 uppercase cursor-help border-b border-zinc-800 border-dashed pb-0.5">Sharpe</span>
-                            </FloatingTooltip>
-                            <div className="text-ui-body font-black text-zinc-300">{fmtNum(stat.sharpeRatio)}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <FloatingTooltip 
-                                title="Calmar Ratio" 
-                                content="Return vs Max Drawdown. > 0.5 is acceptable, > 1.0 is strong. It measures if you are 'paying' too much in drawdown for your gains."
-                            >
-                                <span className="text-ui-label text-zinc-500 uppercase cursor-help border-b border-zinc-800 border-dashed pb-0.5">Calmar</span>
-                            </FloatingTooltip>
-                            <div className="text-ui-body font-black text-zinc-300">{fmtNum(stat.calmarRatio)}</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom Zone: Execution */}
-                <div className="space-y-4 pt-6 border-t border-zinc-900/50 mt-auto">
-                    <div className="text-ui-caption text-zinc-600 uppercase tracking-widest font-black flex justify-between items-center">
-                        <span>Execution</span>
-                        <span className="text-zinc-500 normal-case italic font-normal tracking-normal">Expected: <span className="font-bold text-zinc-400">{fmtUSD(stat.expectedValue)}</span> / trade</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1">
-                            <span className="text-ui-label text-zinc-500 uppercase">Win Rate</span>
-                            <div className="text-ui-body font-black text-zinc-300">{fmtPct(stat.winRate)}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-ui-label text-zinc-500 uppercase">Avg Win</span>
-                            <div className="text-ui-body font-black text-active-accent/80">{fmtUSD(stat.avgWin)}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-ui-label text-zinc-500 uppercase">Avg Loss</span>
-                            <div className="text-ui-body font-black text-active-risk/80">{fmtUSD(stat.avgLoss)}</div>
-                        </div>
-                    </div>
-                </div>
+            <div className="p-6 flex-1">
+                <MetricParityGrid metrics={stat} />
             </div>
         </div>
     );

@@ -17,6 +17,13 @@ export interface AlphaMetrics {
     dollarAlpha: number;
     shadowNav: number;
     mwr: number;
+    // Execution Parity
+    winRate: number;
+    profitFactor: number;
+    expectedValue: number;
+    avgWin: number;
+    avgLoss: number;
+    vtiTwr?: number; // Benchmark Parity
 }
 
 export interface BookTradeStats {
@@ -33,8 +40,14 @@ export interface BookTradeStats {
     totalNetPnl: number;
     benchmarkAlpha: number;
     mwr: number;
+    // Performance Parity
+    twr: number;
     sharpeRatio: number;
     calmarRatio: number;
+    volatility: number;
+    maxDrawdown: number;
+    cvar95: number;
+    vtiTwr?: number; // Benchmark Parity
 }
 
 function calculateMWR(cashflows: { date: string, amount: number }[], terminalValue: number, terminalDate: string): number {
@@ -54,7 +67,6 @@ function calculateMWR(cashflows: { date: string, amount: number }[], terminalVal
         cfs.push({ t: termT, amount: terminalValue });
     }
     
-    // If all cashflows sum to 0 or we have no positive/negative mix, IRR might be undefined or 0
     const totalOut = cfs.filter(c => c.amount < 0).reduce((a, b) => a + b.amount, 0);
     const totalIn = cfs.filter(c => c.amount > 0).reduce((a, b) => a + b.amount, 0);
     if (totalOut === 0 || totalIn === 0) return 0;
@@ -91,10 +103,10 @@ function calculateMaxDrawdownFromPnl(pnlSeries: number[]): number {
     return maxDD;
 }
 
-function calculateSeriesVolatility(pnlSeries: number[]): number {
-    if (pnlSeries.length === 0) return 0;
-    const mean = pnlSeries.reduce((a, b) => a + b, 0) / pnlSeries.length;
-    const variance = pnlSeries.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pnlSeries.length;
+function calculateSeriesVolatility(returns: number[]): number {
+    if (returns.length === 0) return 0;
+    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
     return Math.sqrt(variance * 252);
 }
 
@@ -107,7 +119,8 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
             date,
             daily_total as pnl,
             deposits,
-            cumulative_pnl
+            cumulative_pnl,
+            nav
         FROM alpha_daily_pnl
     `;
 
@@ -119,17 +132,17 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
 
     query += ` ORDER BY date`;
 
-    const rows = db.prepare(query).all(...params) as { date: string, pnl: number, deposits: number, cumulative_pnl: number }[];
+    const rows = db.prepare(query).all(...params) as { date: string, pnl: number, deposits: number, cumulative_pnl: number, nav: number }[];
 
     if (rows.length === 0) {
         return {
             totalPnl: 0, totalDeposited: 0, netReturnPct: 0, twr: 0, annualizedReturn: 0,
             volatility: 0, sharpeRatio: 0, sortinoRatio: 0, informationRatio: 0,
-            calmarRatio: 0, maxDrawdown: 0, cvar95: 0, dollarAlpha: 0, shadowNav: 0, mwr: 0
+            calmarRatio: 0, maxDrawdown: 0, cvar95: 0, dollarAlpha: 0, shadowNav: 0, mwr: 0,
+            winRate: 0, profitFactor: 0, expectedValue: 0, avgWin: 0, avgLoss: 0, vtiTwr: 0
         };
     }
 
-    // ANCHORING: Find starting NAV and shadow VTI for the day PRIOR to the first row in the series
     const firstDate = rows[0].date;
     const anchorRow = db.prepare(`
         SELECT nav FROM alpha_daily_pnl WHERE date < ? ORDER BY date DESC LIMIT 1
@@ -140,7 +153,6 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     `).get(firstDate) as { value: number } | undefined;
 
     let currentNav = anchorRow ? anchorRow.nav : 0;
-    let initialShadowValue = shadowAnchorRow ? shadowAnchorRow.value : 0;
 
     let totalPnl = 0;
     let totalDeposited = 0;
@@ -148,8 +160,9 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const alphaReturns: number[] = [];
 
     const { getVtiBenchmarkData } = await import('./benchmark');
-    const benchmarkData = await getVtiBenchmarkData();
+    const benchmarkData = await getVtiBenchmarkData(startDate, endDate);
     const benchmarkMap = new Map(benchmarkData.map(b => [b.date, b.dailyReturn]));
+    const vtiTwr = benchmarkData.reduce((acc, b) => acc * (1 + b.dailyReturn), 1) - 1;
 
     let peakNav = currentNav;
     let maxDrawdown = 0;
@@ -200,20 +213,14 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const sortedReturns = [...dailyReturns].sort((a, b) => a - b);
     const count5Pct = Math.max(1, Math.floor(sortedReturns.length * 0.05));
     const worst5Pct = sortedReturns.slice(0, count5Pct);
-    const cvar95 = worst5Pct.reduce((a, b) => a + b, 0) / worst5Pct.length;
+    const cvar95 = worst5Pct.reduce((a, b) => a + b, 0) / (worst5Pct.length || 1);
 
-    // Fetch shadow VTI for the LAST date of the filter period
     const lastDate = rows[rows.length - 1].date;
     const shadowEndRow = db.prepare(`SELECT value FROM alpha_shadow_vti WHERE date <= ? ORDER BY date DESC LIMIT 1`).get(lastDate) as { value: number } | undefined;
     const shadowNav = shadowEndRow ? shadowEndRow.value : 0;
-    
-    // Dollar Alpha for the specific period is: (Final NAV - Start NAV) - (Final Shadow - Start Shadow)
-    // Wait, the user wants to see the aggregate alpha as of that date.
     const dollarAlpha = currentNav - shadowNav;
 
-    // Calculate MWR
     const cashflows = rows.filter(r => r.deposits !== 0).map(r => ({ date: r.date, amount: r.deposits }));
-    // For MWR over a period, we must include the opening balance as an inflow
     if (anchorRow && anchorRow.nav > 0) {
         cashflows.unshift({ date: firstDate, amount: anchorRow.nav });
     }
@@ -221,10 +228,22 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const terminalDate = rows.length > 0 ? rows[rows.length - 1].date : new Date().toISOString().split('T')[0];
     const mwr = calculateMWR(cashflows, currentNav, terminalDate);
 
+    // Aggregate Execution Stats
+    const pnlWins = rows.filter(r => r.pnl > 0);
+    const pnlLosses = rows.filter(r => r.pnl < 0);
+    const grossGains = pnlWins.reduce((a, b) => a + b.pnl, 0);
+    const grossLosses = Math.abs(pnlLosses.reduce((a, b) => a + b.pnl, 0));
+
     return {
         totalPnl, totalDeposited, netReturnPct: totalDeposited > 0 ? totalPnl / totalDeposited : 0,
         twr, annualizedReturn, volatility, sharpeRatio, sortinoRatio, informationRatio,
-        calmarRatio, maxDrawdown, cvar95, dollarAlpha, shadowNav, mwr
+        calmarRatio, maxDrawdown, cvar95, dollarAlpha, shadowNav, mwr,
+        winRate: pnlWins.length / (pnlWins.length + pnlLosses.length || 1),
+        profitFactor: grossLosses > 0 ? grossGains / grossLosses : grossGains > 0 ? Infinity : 0,
+        expectedValue: totalPnl / (rows.length || 1),
+        avgWin: pnlWins.length > 0 ? grossGains / pnlWins.length : 0,
+        avgLoss: pnlLosses.length > 0 ? grossLosses / pnlLosses.length : 0,
+        vtiTwr
     };
 }
 
@@ -252,7 +271,10 @@ export async function getBookTradeStats(startDate?: string, endDate?: string): P
     const settings = getStrategicSettings();
     const rf = settings.risk_free_rate;
 
-    const dateFilter = startDate && endDate ? `AND date >= ? AND date <= ?` : '';
+    const { getVtiBenchmarkData } = await import('./benchmark');
+    const benchmarkData = await getVtiBenchmarkData(startDate, endDate);
+    const vtiTwr = benchmarkData.reduce((acc, b) => acc * (1 + b.dailyReturn), 1) - 1;
+
     const dateFilterWhere = startDate && endDate ? `WHERE date >= ? AND date <= ?` : '';
     const dateFilterParams = startDate && endDate ? [startDate, endDate] : [];
 
@@ -262,21 +284,51 @@ export async function getBookTradeStats(startDate?: string, endDate?: string): P
     const dateFilterActivity = startDate && endDate ? `AND activity_date >= ? AND activity_date <= ?` : '';
     const dateFilterActivityParams = startDate && endDate ? [startDate, endDate] : [];
 
-    // Fetch daily book PnLs for drawdown calculation
-    const dailyBookPnls = db.prepare(`SELECT date, options_pnl, equity_pnl, futures_pnl FROM alpha_daily_pnl ${dateFilterWhere} ORDER BY date`).all(...dateFilterParams) as any[];
-    const optDailyPnls = dailyBookPnls.map(r => r.options_pnl || 0);
-    const eqDailyPnls = dailyBookPnls.map(r => r.equity_pnl || 0);
+    const dailyBookPnls = db.prepare(`
+        SELECT 
+            date, 
+            options_pnl as opt, 
+            equity_pnl as eq, 
+            futures_pnl as fut,
+            nav
+        FROM alpha_daily_pnl 
+        ${dateFilterWhere} 
+        ORDER BY date
+    `).all(...dateFilterParams) as any[];
 
-    const optMaxDD = calculateMaxDrawdownFromPnl(optDailyPnls);
-    const eqMaxDD = calculateMaxDrawdownFromPnl(eqDailyPnls);
+    const getSeriesMetrics = (pnlField: string) => {
+        const returns: number[] = [];
+        let peak = 0;
+        let cumulative = 0;
+        let maxDD = 0;
+        
+        dailyBookPnls.forEach((row, i) => {
+            const pnl = row[pnlField] || 0;
+            const prevNav = i > 0 ? dailyBookPnls[i-1].nav : 0;
+            returns.push(prevNav > 0 ? pnl / prevNav : 0);
+            
+            cumulative += pnl;
+            if (cumulative > peak) peak = cumulative;
+            const dd = peak > 0 ? (peak - cumulative) / peak : 0;
+            if (dd > maxDD) maxDD = dd;
+        });
+
+        const twr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
+        const vol = calculateSeriesVolatility(returns);
+        const sorted = [...returns].sort((a, b) => a - b);
+        const worst5 = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.05)));
+        const cvar = worst5.reduce((a, b) => a + b, 0) / (worst5.length || 1);
+
+        return { twr, vol, maxDD, cvar, returns };
+    };
 
     // 1. Options Stats
+    const optSeries = getSeriesMetrics('opt');
     const options = db.prepare(`SELECT open_date, close_date, net_pnl, strike, open_qty, open_premium, hold_days FROM alpha_option_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).all(...dateFilterCloseParams) as any[];
     const optionTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_option_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).get(...dateFilterCloseParams) as { n: number };
     
     let optionsAlpha = 0;
     const optionCashflows: { date: string, amount: number }[] = [];
-    const optionReturns: number[] = [];
     let optionTerminalDate = options.length > 0 ? options[0].close_date : '';
 
     for (const opt of options) {
@@ -285,31 +337,30 @@ export async function getBookTradeStats(startDate?: string, endDate?: string): P
         const cashReturn = notional * (rf / 365) * holdDays;
         optionsAlpha += (opt.net_pnl - cashReturn);
 
-        if (notional > 0) {
-            optionReturns.push(opt.net_pnl / notional);
-        }
-
-        // MWR: Treating open premium as cash flow
         const premium = Math.abs(opt.open_premium);
         if (premium > 0) {
             optionCashflows.push({ date: opt.open_date, amount: premium });
-            // Close is like a negative deposit of the final value
             optionCashflows.push({ date: opt.close_date, amount: -(premium + opt.net_pnl) });
         }
         if (opt.close_date > optionTerminalDate) optionTerminalDate = opt.close_date;
     }
-    const optStats = calculateStats('Options', options.map(r => r.net_pnl), optionTickerCount.n, optionReturns, optMaxDD);
+    const optStats = calculateStats('Options', options.map(r => r.net_pnl), optionTickerCount.n, optSeries.returns, optSeries.maxDD);
     optStats.benchmarkAlpha = optionsAlpha;
     optStats.mwr = calculateMWR(optionCashflows, 0, optionTerminalDate);
+    optStats.twr = optSeries.twr;
+    optStats.volatility = optSeries.vol;
+    optStats.cvar95 = optSeries.cvar;
+    optStats.maxDrawdown = optSeries.maxDD;
+    optStats.vtiTwr = vtiTwr;
     stats.push(optStats);
 
     // 2. Equities Stats
+    const eqSeries = getSeriesMetrics('eq');
     const equities = db.prepare(`SELECT net_pnl, open_date, close_date, open_price, qty FROM alpha_equity_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).all(...dateFilterCloseParams) as any[];
     const equityTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_equity_trades WHERE close_date IS NOT NULL ${dateFilterClose}`).get(...dateFilterCloseParams) as { n: number };
     
     let equitiesAlpha = 0;
     const equityCashflows: { date: string, amount: number }[] = [];
-    const equityReturns: number[] = [];
     let equityTerminalDate = equities.length > 0 ? equities[0].close_date : '';
 
     for (const eq of equities) {
@@ -324,38 +375,39 @@ export async function getBookTradeStats(startDate?: string, endDate?: string): P
             equitiesAlpha += eq.net_pnl;
         }
 
-        const capital = eq.open_price * eq.qty;
-        if (capital > 0) {
-            equityReturns.push(eq.net_pnl / capital);
-        }
-
-        // MWR: Treat every trade open as negative cash flow (outflow)
         equityCashflows.push({ date: eq.open_date, amount: eq.open_price * eq.qty });
-        // Close as positive cash flow (inflow/negative deposit)
         equityCashflows.push({ date: eq.close_date, amount: -(eq.open_price * eq.qty + eq.net_pnl) });
-        
         if (eq.close_date > equityTerminalDate) equityTerminalDate = eq.close_date;
     }
-    const eqStats = calculateStats('Equities', equities.map(r => r.net_pnl), equityTickerCount.n, equityReturns, eqMaxDD);
+    const eqStats = calculateStats('Equities', equities.map(r => r.net_pnl), equityTickerCount.n, eqSeries.returns, eqSeries.maxDD);
     eqStats.benchmarkAlpha = equitiesAlpha;
     eqStats.mwr = calculateMWR(equityCashflows, 0, equityTerminalDate);
+    eqStats.twr = eqSeries.twr;
+    eqStats.volatility = eqSeries.vol;
+    eqStats.cvar95 = eqSeries.cvar;
+    eqStats.maxDrawdown = eqSeries.maxDD;
+    eqStats.vtiTwr = vtiTwr;
     stats.push(eqStats);
 
     // 3. Futures Stats
-    const futureSettlements = db.prepare(`
-        SELECT activity_date, SUM(amount) as amount 
+    const futSeries = getSeriesMetrics('fut');
+    const futureTransactions = db.prepare(`
+        SELECT activity_date, amount 
         FROM alpha_transactions 
         WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
-        GROUP BY activity_date 
         ORDER BY activity_date
     `).all(...dateFilterActivityParams) as { amount: number }[];
-    const futPnls = futureSettlements.map(r => r.amount);
-    const futMaxDD = calculateMaxDrawdownFromPnl(futPnls);
+    const futPnls = futureTransactions.map(r => r.amount);
     
     const futureTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_transactions WHERE trans_code = 'FUTSWP' AND instrument IS NOT NULL AND instrument != '' ${dateFilterActivity}`).get(...dateFilterActivityParams) as { n: number };
-    const futStats = calculateStats('Futures', futPnls, futureTickerCount.n || 0, futPnls, futMaxDD);
+    const futStats = calculateStats('Futures', futPnls, futureTickerCount.n || 0, futSeries.returns, futSeries.maxDD);
     futStats.benchmarkAlpha = futStats.totalNetPnl;
     futStats.mwr = 0;
+    futStats.twr = futSeries.twr;
+    futStats.volatility = futSeries.vol;
+    futStats.cvar95 = futSeries.cvar;
+    futStats.maxDrawdown = futSeries.maxDD;
+    futStats.vtiTwr = vtiTwr;
     stats.push(futStats);
 
     return stats;
@@ -472,7 +524,7 @@ function calculateStats(
         return {
             book, totalTrades: 0, distinctTickerCount: 0, winRate: 0, profitFactor: 0, expectedValue: 0,
             avgWin: 0, avgLoss: 0, maxWin: 0, maxLoss: 0, totalNetPnl: 0, benchmarkAlpha: 0,
-            mwr: 0, sharpeRatio: 0, calmarRatio: 0
+            mwr: 0, twr: 0, sharpeRatio: 0, calmarRatio: 0, volatility: 0, maxDrawdown: 0, cvar95: 0
         };
     }
 
@@ -483,21 +535,18 @@ function calculateStats(
     const grossGains = wins.reduce((a, b) => a + b, 0);
     const grossLosses = Math.abs(losses.reduce((a, b) => a + b, 0));
 
-    // Refined Sharpe
     let sharpeRatio = 0;
     if (returns.length > 0) {
         const vol = calculateSeriesVolatility(returns);
         const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
         sharpeRatio = vol > 0 ? (meanReturn * 252) / vol : 0;
     } else {
-        // Fallback to trade-level Sharpe if no returns series provided
         const mean = totalNetPnl / pnls.length;
         const variance = pnls.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pnls.length;
         const stdDev = Math.sqrt(variance);
         sharpeRatio = stdDev > 0 ? mean / stdDev : 0;
     }
 
-    // Refined Calmar: Net Profit / Max Drawdown
     const calmarRatio = maxDrawdown > 0 ? totalNetPnl / maxDrawdown : 0;
 
     return {
@@ -514,8 +563,12 @@ function calculateStats(
         totalNetPnl,
         benchmarkAlpha: 0,
         mwr: 0,
+        twr: 0,
         sharpeRatio,
-        calmarRatio
+        calmarRatio,
+        volatility: 0,
+        maxDrawdown: 0,
+        cvar95: 0
     };
 }
 export async function getAlphaNavSeries(startDate?: string, endDate?: string): Promise<{ date: string, nav: number }[]> {

@@ -11,7 +11,7 @@ export interface BenchmarkData {
  * Constructs a hypothetical VTI portfolio with identical starting capital and deposit timing.
  * daily_nav_vti[t] = daily_nav_vti[t-1] * (price_vti[t] / price_vti[t-1]) + deposits[t]
  */
-export async function getVtiBenchmarkData(): Promise<BenchmarkData[]> {
+export async function getVtiBenchmarkData(startDate?: string, endDate?: string): Promise<BenchmarkData[]> {
     const alphaRows = db.prepare('SELECT date, deposits FROM alpha_daily_pnl ORDER BY date').all() as { date: string, deposits: number }[];
     
     if (alphaRows.length === 0) return [];
@@ -32,8 +32,6 @@ export async function getVtiBenchmarkData(): Promise<BenchmarkData[]> {
             dailyReturn = (currentPrice / prevPrice) - 1;
         }
 
-        // nav[t] = nav[t-1] * (1 + r) + deposits[t]
-        // This assumes deposits happen at the END of the day (not participating in that day's return)
         currentNav = currentNav * (1 + dailyReturn) + row.deposits;
 
         benchmarkData.push({
@@ -45,6 +43,10 @@ export async function getVtiBenchmarkData(): Promise<BenchmarkData[]> {
         if (currentPrice) {
             prevPrice = currentPrice;
         }
+    }
+
+    if (startDate && endDate) {
+        return benchmarkData.filter(b => b.date >= startDate && b.date <= endDate);
     }
 
     return benchmarkData;

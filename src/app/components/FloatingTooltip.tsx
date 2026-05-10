@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -53,7 +52,7 @@ export default function FloatingTooltip({ title, content, children }: Props) {
                         <div className="text-[10px] font-black uppercase tracking-widest text-zinc-100 border-b border-zinc-900 pb-2">
                             {title}
                         </div>
-                        <div className="text-[11px] leading-relaxed text-zinc-400 font-mono italic">
+                        <div className="text-[11px] leading-relaxed text-zinc-400 font-mono italic whitespace-pre-line">
                             {content}
                         </div>
                         {/* Arrow */}
