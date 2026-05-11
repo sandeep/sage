@@ -8,11 +8,23 @@ import { mapIslands, solveIslands } from './rebalance/islandEngine';
 import { getStrategicSettings } from '../db/settings';
 
 const ENGINE_VERSION: 'v1' | 'v2' = 'v2';
-// ... (rest of imports and types unchanged)
+
 export type DirectiveStatus = 'PENDING' | 'ACCEPTED' | 'SNOOZED' | 'EXECUTED';
 
 export interface Directive {
-// ... (rest of Directive interface)
+    id?: number;
+    type: 'SELL' | 'BUY' | 'REBALANCE' | 'OPTIMIZATION' | 'PLACEMENT';
+    description: string;
+    priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    reasoning: string;
+    link_key: string;
+    status?: DirectiveStatus;
+    // V2 fields
+    account_id?: string;
+    asset_class?: string;
+    scheduled_date?: string;
+    tranche_index?: number;
+    tranche_total?: number;
     amount?: number;
     source_ticker?: string; // Ticker being sold/trimmed
     target_ticker?: string; // Ticker being bought/swapped into
@@ -24,7 +36,7 @@ export function splitIntoTranches(directive: Omit<Directive, 'tranche_index' | '
     const maxSize = settings.max_tranche_size || 20000;
     
     const count = Math.ceil(amount / maxSize);
-    if (count <= 1) return [{ ...directive, tranche_index: 1, tranche_total: 1 }];
+    if (count <= 1) return [{ ...directive, tranche_index: 1, tranche_total: 1 } as Directive];
     
     const baseAmount = Math.floor(amount / count);
     const remainder = amount - baseAmount * count;
@@ -56,7 +68,11 @@ export function splitIntoTranches(directive: Omit<Directive, 'tranche_index' | '
 }
 
 export interface PersistedDirective extends Directive {
-// ... (rest of PersistedDirective interface)
+    id: number;
+    status: DirectiveStatus;
+    tranche_index: number;
+    tranche_total: number;  // raw dollar amount for display
+    account_nickname?: string;
     account_provider?: string;
 }
 
@@ -87,15 +103,21 @@ export async function generateDirectives(): Promise<number> {
         }
     });
 
+    // 5. Deduplicate against existing non-PENDING directives
+    const existing = db.prepare("SELECT account_id, source_ticker, target_ticker, type, tranche_index, status FROM directives WHERE status != 'PENDING'").all() as any[];
+    const existingKey = (d: any) => `${d.account_id}|${d.source_ticker}|${d.target_ticker}|${d.type}|${d.tranche_index}`;
+    const existingSet = new Set(existing.map(existingKey));
+
+    const finalDirectives = directives.filter(d => !existingSet.has(existingKey(d)));
+
     const insertDirective = db.prepare(`
         INSERT INTO directives (type, description, priority, status, reasoning, link_key, account_id, asset_class, tranche_index, tranche_total, amount, source_ticker, target_ticker)
         VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.transaction(() => {
-        // Only wipe PENDING — preserve SCHEDULED/EXECUTED/SNOOZED
         db.prepare("DELETE FROM directives WHERE status = 'PENDING'").run();
-        directives.forEach(d =>
+        finalDirectives.forEach(d =>
             insertDirective.run(
                 d.type, d.description, d.priority, d.reasoning, d.link_key,
                 d.account_id ?? null,
