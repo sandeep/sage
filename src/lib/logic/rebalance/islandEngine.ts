@@ -1,7 +1,8 @@
 
 import db from '../../db/client';
 import { calculateHierarchicalMetrics, MetricRow } from '../xray';
-import { resolveTickerForCategory, Directive } from '../rebalancer';
+import { Directive } from '../rebalancer';
+import { resolveInstrument } from '../instrumentResolver';
 
 export interface IslandCapacity {
     accountId: string;
@@ -20,41 +21,72 @@ export function mapIslands(): IslandCapacity[] {
     
     if (totalPortfolioValue === 0) return [];
 
+    // Optimization: Map metrics for O(1) lookup
+    const metricMap = new Map<string, MetricRow>();
+    metrics.forEach(m => metricMap.set(m.label, m));
+
     const allAccounts = db.prepare('SELECT id, nickname, tax_character, provider FROM accounts').all() as any[];
+    
+    // Optimization: Batch fetch holdings for all accounts
+    const allCurrentHoldings = db.prepare(`
+        SELECT account_id, ticker, SUM(market_value) as value, SUM(cost_basis) as cost_basis
+        FROM holdings_ledger
+        WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_ledger)
+        GROUP BY account_id, ticker
+    `).all() as any[];
+
+    // Optimization: Batch fetch asset registry weights
+    const uniqueTickers = Array.from(new Set(allCurrentHoldings.map(h => h.ticker)));
+    const weightMap = new Map<string, Record<string, number>>();
+    if (uniqueTickers.length > 0) {
+        const placeholders = uniqueTickers.map(() => '?').join(',');
+        const rows = db.prepare(`SELECT ticker, weights FROM asset_registry WHERE ticker IN (${placeholders})`).all(...uniqueTickers) as any[];
+        rows.forEach(r => {
+            try {
+                weightMap.set(r.ticker, JSON.parse(r.weights));
+            } catch (e) {
+                // Silently ignore parsing errors
+            }
+        });
+    }
+
+    const shortfallMetrics = metrics.filter(m => m.level === 2);
     
     return allAccounts.map(acc => {
         const accountId = acc.id;
         const accountLabel = `${acc.provider} ${acc.nickname || acc.id}`;
         
-        const physicalHoldings = db.prepare(`
-            SELECT ticker, SUM(market_value) as value, SUM(cost_basis) as cost_basis
-            FROM holdings_ledger
-            WHERE account_id = ? AND snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_ledger)
-            GROUP BY ticker
-        `).all(accountId) as any[];
+        const accountHoldings = allCurrentHoldings.filter(h => h.account_id === accountId);
 
         // 1. Determine local "Excess"
-        // Heuristic: If global category is overweight, local positions in that category are candidates.
         const excess: IslandCapacity['excess'] = [];
-        physicalHoldings.forEach(h => {
+        accountHoldings.forEach(h => {
             const ticker = h.ticker;
             const value = h.value || 0;
             if (value <= 0) return;
 
-            // Simple "Overweight" Check:
-            // Find which category this ticker belongs to
-            const asset = db.prepare("SELECT weights FROM asset_registry WHERE ticker = ?").get(ticker) as { weights: string } | undefined;
-            if (!asset) return;
-            const weights = JSON.parse(asset.weights);
-            const primaryCategory = Object.keys(weights)[0];
+            const weights = weightMap.get(ticker);
+            const isCash = ticker.toUpperCase() === 'CASH';
+            if (!weights && !isCash) return;
             
-            const categoryMetric = metrics.find(m => m.label === primaryCategory);
-            const globalDelta = categoryMetric ? (categoryMetric.actualValue - (categoryMetric.expectedPortfolio * totalPortfolioValue)) : 0;
+            // REFINED LOGIC: Calculate NET effect
+            // A fund is "Excess" if its aggregate constituent delta is positive (net overweight)
+            let netDelta = 0;
+            if (isCash) {
+                const m = metricMap.get('Cash');
+                netDelta = m ? (m.actualValue - (m.expectedPortfolio * totalPortfolioValue)) : value;
+            } else if (weights) {
+                for (const [category, weight] of Object.entries(weights)) {
+                    const m = metricMap.get(category);
+                    const globalDelta = m ? (m.actualValue - (m.expectedPortfolio * totalPortfolioValue)) : 0;
+                    netDelta += (weight as number) * globalDelta;
+                }
+            }
 
-            if (globalDelta > 500 || primaryCategory === 'Cash' || ticker === 'CASH') {
+            if (netDelta > 500 || isCash) {
                 excess.push({
                     ticker,
-                    amount: Math.min(value, Math.max(0, globalDelta)),
+                    amount: Math.min(value, Math.max(0, netDelta)),
                     costBasis: h.cost_basis
                 });
             }
@@ -62,13 +94,14 @@ export function mapIslands(): IslandCapacity[] {
 
         // 2. Determine local "Shortfall" capability
         const shortfall: IslandCapacity['shortfall'] = [];
-        metrics.filter(m => m.level === 2).forEach(m => {
+        shortfallMetrics.forEach(m => {
             const globalDelta = (m.expectedPortfolio * totalPortfolioValue) - m.actualValue;
             if (globalDelta > 1000) {
+                const resolution = resolveInstrument(accountId, m.label);
                 shortfall.push({
                     assetClass: m.label,
                     amount: globalDelta,
-                    targetTicker: resolveTickerForCategory(m.label, acc.provider)
+                    targetTicker: resolution.ticker
                 });
             }
         });
@@ -117,7 +150,9 @@ export function solveIslands(islands: IslandCapacity[]): Directive[] {
                     link_key: under.targetTicker,
                     account_id: island.accountId,
                     asset_class: under.assetClass,
-                    amount: swapAmount
+                    amount: swapAmount,
+                    source_ticker: over.ticker,
+                    target_ticker: under.targetTicker
                 });
 
                 over.amount -= swapAmount;
@@ -133,7 +168,9 @@ export function solveIslands(islands: IslandCapacity[]): Directive[] {
                     reasoning: `Tax-aware liquidation: re-balancing overweight ${over.ticker} to core cash reserves.`,
                     link_key: over.ticker,
                     account_id: island.accountId,
-                    amount: over.amount
+                    amount: over.amount,
+                    source_ticker: over.ticker,
+                    target_ticker: 'CASH'
                 });
             }
         }

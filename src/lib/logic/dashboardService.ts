@@ -15,7 +15,11 @@ export async function getDashboardData() {
   const efficiency = calculatePortfolioEfficiency();
   const evolution = getStrategyEvolution();
   
-  const allDirectives = db.prepare("SELECT * FROM directives").all() as PersistedDirective[];
+  const allDirectives = db.prepare(`
+    SELECT d.*, a.nickname as account_nickname, a.provider as account_provider
+    FROM directives d
+    LEFT JOIN accounts a ON d.account_id = a.id
+  `).all() as PersistedDirective[];
 
   // Fetch Topology Data for Forensic Sankey
   const accounts = db.prepare('SELECT id, nickname as name FROM accounts').all() as any[];

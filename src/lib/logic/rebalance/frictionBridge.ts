@@ -1,6 +1,7 @@
 
 import { IdealPortfolioMap } from './idealMap';
-import { Directive, resolveTickerForCategory } from '../rebalancer';
+import { Directive, splitIntoTranches } from '../rebalancer';
+import { resolveInstrument } from '../instrumentResolver';
 import db from '../../db/client';
 
 import { getStrategicSettings } from '../../db/settings';
@@ -24,30 +25,6 @@ function resolveCategoryForTicker(ticker: string): string {
     } catch {
         return ticker;
     }
-}
-
-function splitIntoTranches(directive: Omit<Directive, 'tranche_index' | 'tranche_total'>, totalAmount: number): Directive[] {
-    const settings = getStrategicSettings();
-    const maxSize = settings.max_tranche_size || 20000;
-    
-    const count = Math.ceil(totalAmount / maxSize);
-    if (count <= 1) return [{ ...directive, tranche_index: 1, tranche_total: 1 }];
-    
-    const baseAmount = Math.floor(totalAmount / count);
-    const remainder = totalAmount - baseAmount * count;
-
-    return Array.from({ length: count }, (_, i) => {
-        const amount = baseAmount + (i === count - 1 ? remainder : 0);
-        const amountK = (amount / 1000).toFixed(1);
-        const description = directive.description.replace(/\$[\d.]+k/, `$${amountK}k`);
-        return {
-            ...directive,
-            description,
-            amount,
-            tranche_index: i + 1,
-            tranche_total: count,
-        };
-    });
 }
 
 export function generateReconciliationTrades(
@@ -85,7 +62,7 @@ export function generateReconciliationTrades(
             const under = underweights[0];
             const swapAmount = Math.min(over.amount, under.amount);
             const category = resolveCategoryForTicker(under.ticker);
-            const targetTicker = resolveTickerForCategory(category, meta.provider);
+            const targetTicker = resolveInstrument(accountId, category).ticker;
 
             const base: Omit<Directive, 'tranche_index' | 'tranche_total'> = {
                 type: 'REBALANCE',
@@ -96,8 +73,10 @@ export function generateReconciliationTrades(
                 account_id: accountId,
                 asset_class: category,
                 amount: swapAmount,
+                source_ticker: over.ticker,
+                target_ticker: targetTicker
             };
-            directives.push(...splitIntoTranches(base, swapAmount));
+            directives.push(...splitIntoTranches(base, meta.label));
 
             over.amount -= swapAmount;
             under.amount -= swapAmount;
@@ -107,6 +86,7 @@ export function generateReconciliationTrades(
 
         // Stand-alone Trims
         for (const over of overweights) {
+            const category = resolveCategoryForTicker(over.ticker);
             const base: Omit<Directive, 'tranche_index' | 'tranche_total'> = {
                 type: 'SELL',
                 description: `Trim $${(over.amount / 1000).toFixed(1)}k ${over.ticker} in ${meta.label}`,
@@ -114,16 +94,18 @@ export function generateReconciliationTrades(
                 reasoning: `Overweight position in ${meta.label} relative to target-state blueprint.`,
                 link_key: over.ticker,
                 account_id: accountId,
-                asset_class: resolveCategoryForTicker(over.ticker),
+                asset_class: category,
                 amount: over.amount,
+                source_ticker: over.ticker,
+                target_ticker: 'CASH'
             };
-            directives.push(...splitIntoTranches(base, over.amount));
+            directives.push(...splitIntoTranches(base, meta.label));
         }
 
         // Stand-alone Buys
         for (const under of underweights) {
             const category = resolveCategoryForTicker(under.ticker);
-            const targetTicker = resolveTickerForCategory(category, meta.provider);
+            const targetTicker = resolveInstrument(accountId, category).ticker;
             const base: Omit<Directive, 'tranche_index' | 'tranche_total'> = {
                 type: 'BUY',
                 description: `Buy $${(under.amount / 1000).toFixed(1)}k ${category} (${targetTicker}) in ${meta.label}`,
@@ -133,8 +115,9 @@ export function generateReconciliationTrades(
                 account_id: accountId,
                 asset_class: category,
                 amount: under.amount,
+                target_ticker: targetTicker
             };
-            directives.push(...splitIntoTranches(base, under.amount));
+            directives.push(...splitIntoTranches(base, meta.label));
         }
     }
 

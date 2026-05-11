@@ -19,20 +19,18 @@ export function applyWashSaleGuard(directives: Directive[]): Directive[] {
     return directives.map(d => {
         if (d.type !== 'BUY' && d.type !== 'REBALANCE') return d;
 
-        // Find the target ticker in the description (e.g. "Buy $10k VTI")
-        // This is a heuristic check for now; in v2.1 we will use structured trade objects.
-        for (const ticker of Array.from(lockedTickers)) {
-            if (d.description.includes(ticker)) {
-                // Fetch proxy from asset_registry
-                const proxy = db.prepare('SELECT canonical FROM asset_registry WHERE ticker = ?').get(ticker) as { canonical: string } | undefined;
-                const proxyTicker = proxy?.canonical || 'CORE_PROXY'; // Fallback
+        const target = d.target_ticker;
+        if (target && lockedTickers.has(target)) {
+            // Fetch proxy from asset_registry
+            const proxy = db.prepare('SELECT canonical FROM asset_registry WHERE ticker = ?').get(target) as { canonical: string } | undefined;
+            const proxyTicker = proxy?.canonical || 'CORE_PROXY'; // Fallback
 
-                return {
-                    ...d,
-                    description: d.description.replace(ticker, `${proxyTicker} [WASH SALE PROXY]`),
-                    reasoning: `${d.reasoning} · Trade diverted from ${ticker} to ${proxyTicker} due to active 30-day wash-sale lockout.`
-                };
-            }
+            return {
+                ...d,
+                target_ticker: proxyTicker,
+                description: d.description.replace(target, `${proxyTicker} [WASH SALE PROXY]`),
+                reasoning: `${d.reasoning} · Trade diverted from ${target} to ${proxyTicker} due to active 30-day wash-sale lockout.`
+            };
         }
         return d;
     });

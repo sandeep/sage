@@ -5,6 +5,7 @@ import { resolveValue } from './xray';
 import { PLACEMENT_PRIORITY } from './taxPlacement';
 import { TaxEfficiencyTier, AccountType } from '../types/audit';
 import { getHoldings } from './portfolioEngine';
+import { resolveInstrument } from './instrumentResolver';
 
 export interface CanonicalExposure { name: string; tickers: string[]; totalValue: number; percentage: number; }
 
@@ -115,6 +116,7 @@ export interface ExpenseRisk {
     betterEr: number;
     savingsBps: number;
     potentialSavings: number;
+    currentValue: number;
     // New Fields
     accountId: string;
     accountName: string;
@@ -152,27 +154,29 @@ export function getExpenseRisks(): ExpenseRisk[] {
         const primaryCat = Object.entries(config.weights).sort((a, b) => b[1] - a[1])[0]?.[0];
         if (!primaryCat) return;
 
-        // Find cheaper alternative in same category
-        let bestAlt: { ticker: string; er: number } | null = null;
-        for (const [altTicker, altConfig] of Object.entries(tickerMap)) {
-            if (altTicker === h.ticker) continue;
-            if ((altConfig.weights[primaryCat] || 0) < 0.8) continue;
-            const altMeta = metaMap.get(altTicker);
-            const altEr = altMeta?.custom_er ?? altMeta?.er;
-            if (altEr == null) continue;
-            if (altEr < currentEr && (!bestAlt || altEr < bestAlt.er)) {
-                bestAlt = { ticker: altTicker, er: altEr };
-            }
-        }
+        // Use resolveInstrument to find the designated "best" ticker for this account and category
+        const resolution = resolveInstrument(h.account_id, primaryCat);
+        const bestAltTicker = resolution.ticker;
+        
+        console.log(`[DEBUG] Holding: ${h.ticker} in ${h.account_id}, Cat: ${primaryCat}, Resolution: ${bestAltTicker}`);
 
-        if (bestAlt && (currentEr - bestAlt.er) > 0.0005) { // At least 5bps savings
+        if (bestAltTicker === h.ticker) return;
+
+        const altMeta = metaMap.get(bestAltTicker);
+        const altEr = altMeta?.custom_er ?? altMeta?.er;
+        
+        console.log(`[DEBUG] Current ER: ${currentEr}, Alt ER: ${altEr}`);
+        
+        if (altEr != null && altEr < currentEr && (currentEr - altEr) > 0.0005) { // At least 5bps savings
+            console.log(`[DEBUG] Risk FOUND: ${h.ticker} -> ${bestAltTicker}`);
             risks.push({
                 currentTicker: h.ticker,
                 currentEr,
-                betterTicker: bestAlt.ticker,
-                betterEr: bestAlt.er,
-                savingsBps: (currentEr - bestAlt.er) * 10000,
-                potentialSavings: val * (currentEr - bestAlt.er),
+                betterTicker: bestAltTicker,
+                betterEr: altEr,
+                savingsBps: (currentEr - altEr) * 10000,
+                potentialSavings: val * (currentEr - altEr),
+                currentValue: val,
                 // Capture Metadata
                 accountId: h.account_id,
                 accountName: h.nickname
@@ -252,4 +256,3 @@ export function getTaxPlacementIssues(): TaxPlacementIssue[] {
 
     return issues.sort((a, b) => b.holdingValue - a.holdingValue);
 }
-

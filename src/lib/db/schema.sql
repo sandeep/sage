@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS directives (
     link_key TEXT,
     executed_at DATETIME,
     final_value REAL,
+    account_id TEXT,
+    asset_class TEXT,
+    tranche_index INTEGER,
+    tranche_total INTEGER,
+    amount REAL,
+    source_ticker TEXT,
+    target_ticker TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

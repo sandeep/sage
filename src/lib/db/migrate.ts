@@ -47,6 +47,8 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         link_key TEXT,
         executed_at DATETIME,
         final_value REAL,
+        source_ticker TEXT,
+        target_ticker TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -162,6 +164,12 @@ export function runMigrations(db: InstanceType<typeof Database>) {
     }
     if (!directiveCols.find((c: any) => c.name === 'amount')) {
         db.exec("ALTER TABLE directives ADD COLUMN amount REAL");
+    }
+    if (!directiveCols.find((c: any) => c.name === 'source_ticker')) {
+        db.exec("ALTER TABLE directives ADD COLUMN source_ticker TEXT");
+    }
+    if (!directiveCols.find((c: any) => c.name === 'target_ticker')) {
+        db.exec("ALTER TABLE directives ADD COLUMN target_ticker TEXT");
     }
 
     // ETF Composition
