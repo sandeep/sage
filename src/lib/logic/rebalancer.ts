@@ -28,6 +28,8 @@ export interface Directive {
     amount?: number;
     source_ticker?: string; // Ticker being sold/trimmed
     target_ticker?: string; // Ticker being bought/swapped into
+    source_asset_class?: string;
+    target_asset_class?: string;
 }
 
 export function splitIntoTranches(directive: Omit<Directive, 'tranche_index' | 'tranche_total'>, accountLabel: string): Directive[] {
@@ -111,8 +113,8 @@ export async function generateDirectives(): Promise<number> {
     const finalDirectives = directives.filter(d => !existingSet.has(existingKey(d)));
 
     const insertDirective = db.prepare(`
-        INSERT INTO directives (type, description, priority, status, reasoning, link_key, account_id, asset_class, tranche_index, tranche_total, amount, source_ticker, target_ticker)
-        VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO directives (type, description, priority, status, reasoning, link_key, account_id, asset_class, tranche_index, tranche_total, amount, source_ticker, target_ticker, source_asset_class, target_asset_class)
+        VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.transaction(() => {
@@ -126,7 +128,9 @@ export async function generateDirectives(): Promise<number> {
                 d.tranche_total ?? 1,
                 d.amount ?? null,
                 d.source_ticker ?? null,
-                d.target_ticker ?? null
+                d.target_ticker ?? null,
+                d.source_asset_class ?? null,
+                d.target_asset_class ?? null
             )
         );
     })();

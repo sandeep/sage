@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body { background: #000; color: #fff; font-family: ui-monospace, monospace; }
+        .ui-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; }
+        .ui-value { font-size: 13px; font-weight: 700; }
+        .ticker-pill { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 2px; }
+        .buy-pill { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .sell-pill { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
+    </style>
+</head>
+<body class="p-10">
+    <div class="max-w-6xl mx-auto space-y-12">
+        <header class="border-b border-zinc-900 pb-6">
+            <h1 class="text-2xl font-black uppercase tracking-tighter text-emerald-500">Holistic Execution Grid</h1>
+            <p class="ui-label mt-2">Strategic Change -> Account Specifics -> Action</p>
+        </header>
+
+        <table class="w-full border-collapse">
+            <thead>
+                <tr class="text-left ui-label border-b border-zinc-800">
+                    <th class="py-4 px-4 w-1/4">Asset Class</th>
+                    <th class="py-4 px-4 text-right">Target Delta</th>
+                    <th class="py-4 px-4">Execution Plan (By Account)</th>
+                    <th class="py-4 px-4 text-right">Progress</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-900">
+                <!-- ROW 1: Emerging Markets (Underweight) -->
+                <tr class="bg-zinc-900/10">
+                    <td class="py-8 px-4 align-top">
+                        <div class="ui-value text-white">Emerging Markets</div>
+                        <div class="ui-label mt-1 text-emerald-500">Underweight</div>
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                        <div class="ui-value text-emerald-500">+$39,927</div>
+                        <div class="ui-label mt-1">1.2% &rarr; 12.0%</div>
+                    </td>
+                    <td class="py-8 px-4">
+                        <div class="space-y-6">
+                            <!-- Account A -->
+                            <div class="flex items-center gap-6">
+                                <div class="w-40 shrink-0">
+                                    <div class="text-xs font-black text-zinc-300">FIDELITY Roth</div>
+                                    <div class="ui-label text-[8px]">Brokerage &middot; Individual</div>
+                                </div>
+                                <div class="flex-1 flex items-center gap-3">
+                                    <span class="ticker-pill buy-pill">BUY</span>
+                                    <span class="text-xs font-black text-white">VWO</span>
+                                    <span class="text-xs text-zinc-500">$20,000</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="px-4 py-1.5 bg-emerald-600 text-white text-[9px] font-black uppercase rounded-sm shadow-lg">Accept Stage 1</button>
+                                    <button class="px-3 py-1.5 text-zinc-600 text-[9px] font-black uppercase">Snooze</button>
+                                </div>
+                            </div>
+                            <!-- Account B -->
+                            <div class="flex items-center gap-6 opacity-40 grayscale">
+                                <div class="w-40 shrink-0">
+                                    <div class="text-xs font-black text-zinc-300">VANGUARD 401k</div>
+                                    <div class="ui-label text-[8px]">Deferred &middot; Employer</div>
+                                </div>
+                                <div class="flex-1 flex items-center gap-3">
+                                    <span class="ticker-pill buy-pill">BUY</span>
+                                    <span class="text-xs font-black text-white">VEMAX</span>
+                                    <span class="text-xs text-zinc-500">$19,927</span>
+                                </div>
+                                <div class="flex items-center gap-2 italic text-[9px] text-zinc-700 uppercase">
+                                    Awaiting Previous Stage
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                         <div class="text-[9px] font-black text-amber-500 mb-2">STAGE 1 / 2</div>
+                         <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                             <div class="h-full bg-emerald-500/30 w-1/2"></div>
+                         </div>
+                    </td>
+                </tr>
+
+                <!-- ROW 2: Total Stock Market (Overweight) -->
+                <tr>
+                    <td class="py-8 px-4 align-top">
+                        <div class="ui-value text-white">Total Stock Market</div>
+                        <div class="ui-label mt-1 text-rose-500">Overweight</div>
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                        <div class="ui-value text-rose-500">-$50,000</div>
+                        <div class="ui-label mt-1">65.0% &rarr; 50.0%</div>
+                    </td>
+                    <td class="py-8 px-4">
+                        <div class="flex items-center gap-6">
+                            <div class="w-40 shrink-0">
+                                <div class="text-xs font-black text-zinc-300">FIDELITY Individual</div>
+                                <div class="ui-label text-[8px]">Taxable</div>
+                            </div>
+                            <div class="flex-1 flex items-center gap-3">
+                                <span class="ticker-pill sell-pill">SELL</span>
+                                <span class="text-xs font-black text-white">VTI</span>
+                                <span class="text-xs text-zinc-500">$50,000</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="px-4 py-1.5 bg-emerald-600 text-white text-[9px] font-black uppercase rounded-sm shadow-lg">Accept Stage 1</button>
+                                <button class="px-3 py-1.5 text-zinc-600 text-[9px] font-black uppercase">Snooze</button>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                         <div class="text-[9px] font-black text-zinc-700 mb-2">STAGE 1 / 3</div>
+                         <div class="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                             <div class="h-full bg-emerald-500/10 w-1/3"></div>
+                         </div>
+                    </td>
+                </tr>
+
+                <!-- ROW 3: Fixed Income (Balanced) -->
+                <tr class="opacity-20">
+                    <td class="py-8 px-4 align-top">
+                        <div class="ui-value text-zinc-500">Fixed Income</div>
+                        <div class="ui-label mt-1">Balanced</div>
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                        <div class="ui-value text-zinc-700">$0</div>
+                        <div class="ui-label mt-1">20.0% &rarr; 20.0%</div>
+                    </td>
+                    <td class="py-8 px-4 italic text-zinc-700 text-xs">
+                        Equilibrium maintained. No actions required.
+                    </td>
+                    <td class="py-8 px-4 text-right align-top">
+                         <div class="text-[10px] font-black text-zinc-900 uppercase">SYNCHRONIZED</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -8,7 +8,7 @@ export interface IslandCapacity {
     accountId: string;
     accountLabel: string;
     taxCharacter: 'TAXABLE' | 'ROTH' | 'DEFERRED';
-    excess: Array<{ ticker: string; amount: number; costBasis?: number }>;
+    excess: Array<{ ticker: string; amount: number; assetClass: string; costBasis?: number }>;
     shortfall: Array<{ assetClass: string; amount: number; targetTicker: string }>;
 }
 
@@ -72,14 +72,23 @@ export function mapIslands(): IslandCapacity[] {
             // REFINED LOGIC: Calculate NET effect
             // A fund is "Excess" if its aggregate constituent delta is positive (net overweight)
             let netDelta = 0;
+            let primaryAssetClass = 'Unknown';
+
             if (isCash) {
+                primaryAssetClass = 'Cash';
                 const m = metricMap.get('Cash');
                 netDelta = m ? (m.actualValue - (m.expectedPortfolio * totalPortfolioValue)) : value;
             } else if (weights) {
+                let maxWeight = -1;
                 for (const [category, weight] of Object.entries(weights)) {
+                    const w = weight as number;
+                    if (w > maxWeight) {
+                        maxWeight = w;
+                        primaryAssetClass = category;
+                    }
                     const m = metricMap.get(category);
                     const globalDelta = m ? (m.actualValue - (m.expectedPortfolio * totalPortfolioValue)) : 0;
-                    netDelta += (weight as number) * globalDelta;
+                    netDelta += w * globalDelta;
                 }
             }
 
@@ -87,6 +96,7 @@ export function mapIslands(): IslandCapacity[] {
                 excess.push({
                     ticker,
                     amount: Math.min(value, Math.max(0, netDelta)),
+                    assetClass: primaryAssetClass,
                     costBasis: h.cost_basis
                 });
             }
@@ -152,7 +162,9 @@ export function solveIslands(islands: IslandCapacity[]): Directive[] {
                     asset_class: under.assetClass,
                     amount: swapAmount,
                     source_ticker: over.ticker,
-                    target_ticker: under.targetTicker
+                    target_ticker: under.targetTicker,
+                    source_asset_class: over.assetClass,
+                    target_asset_class: under.assetClass
                 });
 
                 over.amount -= swapAmount;
@@ -170,7 +182,9 @@ export function solveIslands(islands: IslandCapacity[]): Directive[] {
                     account_id: island.accountId,
                     amount: over.amount,
                     source_ticker: over.ticker,
-                    target_ticker: 'CASH'
+                    target_ticker: 'CASH',
+                    source_asset_class: over.assetClass,
+                    target_asset_class: 'Cash'
                 });
             }
         }

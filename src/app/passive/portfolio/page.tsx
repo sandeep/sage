@@ -70,7 +70,7 @@ export default async function CorePortfolio() {
                 <span>Architectural Realignments</span>
             </div>
             <div id="execution-queue" className="bg-zinc-950/50 border border-zinc-900 rounded-sm shadow-2xl overflow-hidden">
-                <TaskBlotter directives={allDirectives} />
+                <TaskBlotter directives={allDirectives} metrics={hierarchicalMetrics} />
             </div>
         </section>
 

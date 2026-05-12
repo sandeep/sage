@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS directives (
     amount REAL,
     source_ticker TEXT,
     target_ticker TEXT,
+    source_asset_class TEXT,
+    target_asset_class TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

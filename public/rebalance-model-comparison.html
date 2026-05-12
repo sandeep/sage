@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body { background: #000; color: #fff; font-family: ui-monospace, monospace; }
+        .ui-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; }
+        .ui-value { font-size: 13px; font-weight: 700; }
+        .ticker-pill { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 2px; }
+        .buy-pill { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .sell-pill { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
+    </style>
+</head>
+<body class="p-10">
+    <div class="max-w-6xl mx-auto space-y-20">
+        
+        <!-- APPROACH A: ASSET CLASS CENTRIC -->
+        <section class="space-y-6">
+            <header class="border-b border-zinc-900 pb-4">
+                <h2 class="text-xl font-black uppercase text-zinc-400">Approach A: Asset Class Centric</h2>
+                <p class="ui-label mt-1 text-zinc-600">Rows are categories. Sells and Buys live in separate rows.</p>
+            </header>
+            
+            <div class="bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden">
+                <table class="w-full border-collapse">
+                    <tr class="border-b border-zinc-900 bg-zinc-900/10">
+                        <td class="p-6 w-1/4 align-top">
+                            <div class="ui-value">Total Stock Market</div>
+                            <div class="ui-label text-rose-500">Overweight</div>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-32 shrink-0"><div class="text-xs font-bold text-zinc-300">Fidelity Indiv</div></div>
+                                <span class="ticker-pill sell-pill">SELL</span>
+                                <span class="text-xs font-black">VTI</span>
+                                <span class="text-xs text-zinc-500">$50,000</span>
+                                <button class="ml-auto px-4 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase rounded-sm">Accept</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="border-b border-zinc-900 bg-zinc-900/10">
+                        <td class="p-6 w-1/4 align-top">
+                            <div class="ui-value">Emerging Markets</div>
+                            <div class="ui-label text-emerald-500">Underweight</div>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-32 shrink-0"><div class="text-xs font-bold text-zinc-300">Fidelity Roth</div></div>
+                                <span class="ticker-pill buy-pill">BUY</span>
+                                <span class="text-xs font-black">VWO</span>
+                                <span class="text-xs text-zinc-500">$50,000</span>
+                                <button class="ml-auto px-4 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase rounded-sm">Accept</button>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <p class="text-ui-caption italic text-zinc-500">Pros: Maps directly to your Strategic Allocation table. Cons: The connection between the Sell and the Buy is lost.</p>
+        </section>
+
+        <!-- APPROACH B: MOVE CENTRIC (THE "SWAP" GRID) -->
+        <section class="space-y-6">
+            <header class="border-b border-zinc-900 pb-4">
+                <h2 class="text-xl font-black uppercase text-emerald-500">Approach B: Move Centric</h2>
+                <p class="ui-label mt-1 text-zinc-600">Rows are Strategic Moves. Source and Destination shown together.</p>
+            </header>
+            
+            <div class="bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden">
+                <div class="p-6 space-y-8">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="ui-value">Total Stock Market</div>
+                                <span class="text-zinc-700">&rarr;</span>
+                                <div class="ui-value text-emerald-500">Emerging Markets</div>
+                            </div>
+                            <div class="ui-label font-black text-white">$50,000 Re-allocation</div>
+                        </div>
+
+                        <div class="bg-zinc-900/20 p-4 rounded-sm border border-zinc-900 space-y-4">
+                            <!-- SOURCE -->
+                            <div class="flex items-center gap-4">
+                                <div class="w-32 shrink-0"><div class="text-xs font-bold text-zinc-300">Fidelity Indiv</div></div>
+                                <div class="flex-1 flex items-center gap-2">
+                                    <span class="ticker-pill sell-pill">SELL</span>
+                                    <span class="text-xs font-black">VTI</span>
+                                    <span class="text-xs text-zinc-500">$50k</span>
+                                </div>
+                                <div class="text-[9px] font-black text-zinc-700 uppercase">Step 1</div>
+                            </div>
+                            <!-- DESTINATION -->
+                            <div class="flex items-center gap-4 opacity-40">
+                                <div class="w-32 shrink-0"><div class="text-xs font-bold text-zinc-300">Fidelity Roth</div></div>
+                                <div class="flex-1 flex items-center gap-2">
+                                    <span class="ticker-pill buy-pill">BUY</span>
+                                    <span class="text-xs font-black text-white">VWO</span>
+                                    <span class="text-xs text-zinc-500">$50k</span>
+                                </div>
+                                <div class="text-[9px] font-black text-zinc-700 uppercase">Step 2</div>
+                            </div>
+                        </div>
+                        <button class="w-full py-2 bg-emerald-600 text-white text-[10px] font-black uppercase rounded-sm shadow-xl">Accept Full Strategic Move</button>
+                    </div>
+                </div>
+            </div>
+            <p class="text-ui-caption italic text-zinc-500">Pros: Clear logical connection ("Sell X to fund Y"). Cons: Harder to show "All" asset classes if there isn't a corresponding move for every category.</p>
+        </section>
+
+    </div>
+</body>
+</html>
