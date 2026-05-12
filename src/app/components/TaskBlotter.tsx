@@ -1,18 +1,19 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ForensicAuditPane from './ForensicAuditPane';
 
-import { Directive as LogicDirective, PersistedDirective } from '@/lib/logic/rebalancer';
+import { PersistedDirective } from '@/lib/logic/rebalancer';
 import { MetricRow } from '@/lib/logic/xray';
 
-interface Directive extends PersistedDirective {}
+export type Directive = PersistedDirective;
 
 interface TradeCell {
     account_id: string;
     directives: Directive[];
 }
 
-interface StrategicMoveRow {
+export interface StrategicMoveRow {
     goal: string;
     headline: string;
     assetClass?: string;
@@ -42,6 +43,7 @@ export default function TaskBlotter({ directives, metrics = [] }: { directives: 
     const router = useRouter();
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [showHistory, setShowHistory] = useState(false);
+    const [selectedMove, setSelectedMove] = useState<StrategicMoveRow | null>(null);
 
     const updateStatus = async (id: number, status: string) => {
         setProcessingId(id);
@@ -190,7 +192,7 @@ export default function TaskBlotter({ directives, metrics = [] }: { directives: 
                                 return (
                                     <tr key={row.goal} className={`group transition-colors ${row.status === 'SYNCHRONIZED' ? 'opacity-50' : ''}`}>
                                         {/* Sticky Row Header */}
-                                        <td className="sticky left-0 z-20 bg-zinc-950 px-4 py-1 border-b border-zinc-900 align-middle shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] group-hover:bg-zinc-900/20 cursor-pointer hover:bg-zinc-900">
+                                        <td onClick={() => setSelectedMove(row)} className="sticky left-0 z-20 bg-zinc-950 px-4 py-1 border-b border-zinc-900 align-middle shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] group-hover:bg-zinc-900/20 cursor-pointer hover:bg-zinc-900">
                                             <div className="flex items-center gap-3">
                                                 <div className={`text-ui-caption font-bold px-1 py-0.5 rounded-sm border uppercase tracking-tighter ${
                                                     row.status === 'ACTIONABLE' ? 'text-amber-500 border-amber-500/20 bg-amber-500/5' : 
@@ -281,6 +283,7 @@ export default function TaskBlotter({ directives, metrics = [] }: { directives: 
                     </table>
                 </div>
             )}
+            <ForensicAuditPane selectedMove={selectedMove} onClose={() => setSelectedMove(null)} />
         </div>
     );
 }

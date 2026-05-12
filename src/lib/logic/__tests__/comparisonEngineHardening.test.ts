@@ -37,17 +37,17 @@ describe('comparisonEngine Hardening', () => {
         const stagflation = result.crisisData.find(p => p.name === 'Stagflation');
         expect(stagflation).toBeDefined();
         // Since we have 60-year trailing window (from 2025), 1973-1974 should be covered.
-        expect(stagflation.vti).not.toBeNull();
-        expect(stagflation.target).not.toBeNull();
+        expect(stagflation!.vti).not.toBeNull();
+        expect(stagflation!.target).not.toBeNull();
 
         // Check if Dot-com has data
         const dotcom = result.crisisData.find(p => p.name === 'Dot-com');
-        expect(dotcom.vti).not.toBeNull();
-        expect(dotcom.target).not.toBeNull();
+        expect(dotcom!.vti).not.toBeNull();
+        expect(dotcom!.target).not.toBeNull();
 
         // Check if GFC has data
         const gfc = result.crisisData.find(p => p.name === 'GFC');
-        expect(gfc.vti).not.toBeNull();
-        expect(gfc.target).not.toBeNull();
+        expect(gfc!.vti).not.toBeNull();
+        expect(gfc!.target).not.toBeNull();
     });
 });
