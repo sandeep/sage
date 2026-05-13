@@ -22,8 +22,9 @@ If the application fails to build or run with obscure errors (e.g., `SIGKILL`, `
 
 ## 🏗️ Engineering Standards
 
-- **Local-First:** Always assume the application operates on a local SQLite database (`sage.db`).
-- **Database Integrity Mandate:** NEVER perform operations that delete, truncate, or corrupt the production database (`sage.db`). All upgrades must be non-destructive schema migrations (using `ensureColumn` in `bootstrap.js`) that preserve existing user data.
+- **Data Integrity & Mathematical Rigor**: All code must adhere to the mandatory principles defined in [ENGINEERING_STANDARDS.md](./ENGINEERING_STANDARDS.md).
+- **Database Portability**: While the current implementation uses a local SQLite database (`sage.db`), all logic must remain provider-agnostic to facilitate future migration to hosted services.
+- **Database Integrity Mandate:** NEVER perform operations that delete, truncate, or corrupt data. All upgrades must be non-destructive schema migrations that preserve existing user records.
 - **Pre-Migration Backups:** Always verify that `bootstrap.js` creates a timestamped backup before attempting schema changes.
 - **Validation:** Always verify builds with `npm run build` after making structural or configuration changes.
 

@@ -35,7 +35,7 @@ describe('optionTrades reconstruction', () => {
         expect(trades).toHaveLength(1);
         expect(trades[0]).toMatchObject({
             instrument,
-            option_key: description,
+            option_key: description.toLowerCase().replace(/[^a-z0-9]/g, ''),
             option_type: 'CALL',
             strike: 105,
             expiry: '8/8/2025',

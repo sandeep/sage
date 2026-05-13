@@ -4,8 +4,9 @@
  * Ensures all components (1Y, 3Y, 5Y) use the exact same 'Today' and 'Start' points.
  */
 
-// We anchor to the latest available price in the database to prevent intra-day drift
-export const TODAY_ANCHOR = '2026-03-20';
+// We anchor to the latest available price in the database to prevent intra-day drift,
+// but default to actual today if no simulation override is present.
+export const TODAY_ANCHOR = process.env.NEXT_PUBLIC_SIM_DATE || new Date().toISOString().split('T')[0];
 
 export function getTrailingYearStart(): string {
     // 2025-03-20

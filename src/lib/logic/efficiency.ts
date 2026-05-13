@@ -68,7 +68,9 @@ export function calculatePortfolioEfficiency(): DragMetric {
                             totalLocationLeakage += value * meta.yield * (currentRate - preferredRate);
                         }
                     }
-                } catch { /* ignore malformed weights */ }
+                } catch (e) { 
+                    console.warn(`[Efficiency] Failed to parse weights for ${h.ticker}:`, e);
+                }
             }
         });
 

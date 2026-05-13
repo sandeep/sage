@@ -183,8 +183,8 @@ async function discoverAssets(): Promise<string[]> {
 
     const discovered: string[] = [];
     const insert = db.prepare(`
-        INSERT INTO asset_registry (ticker, canonical, description, asset_type, weights, is_core)
-        VALUES (?, ?, ?, ?, ?, 0)
+        INSERT INTO asset_registry (ticker, canonical, description, asset_type, weights, is_core, asset_class)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
     `);
 
     db.transaction(() => {
@@ -192,35 +192,48 @@ async function discoverAssets(): Promise<string[]> {
             if (!ticker) continue;
             
             let assetType = 'EQUITY';
-            let weights = '{"Total Stock Market": 1.0}';
+            let assetClass = 'UNMAPPED';
+            let weights = '{"UNMAPPED": 1.0}';
             
             if (ticker === 'CASH' || ticker.includes('**')) {
                 assetType = 'EQUITY';
+                assetClass = 'Cash';
                 weights = '{"Cash": 1.0}';
             } else if (ticker.length > 6 || ticker.includes(' ')) {
                 assetType = 'OPTION';
-                weights = '{"Total Stock Market": 1.0}';
+                assetClass = 'UNMAPPED';
+                weights = '{"UNMAPPED": 1.0}';
             } else if (ETF_PROXY[ticker] || BOND_PROXIES.has(ticker)) {
                 assetType = 'ETF';
                 if (BOND_PROXIES.has(ticker) || ticker === 'FXNAX') {
+                    assetClass = 'US Aggregate Bond';
                     weights = '{"US Aggregate Bond": 1.0}';
                 }
             }
 
             // Specific mappings for known user tickers
-            if (ticker === 'VMFXX' || ticker === 'VMRXX') weights = '{"Cash": 1.0}';
-            if (ticker === 'FSPSX') weights = '{"Developed Market": 1.0}';
-            if (ticker === 'FPADX') weights = '{"Emerging Market": 1.0}';
-            if (ticker === 'FSRNX') weights = '{"REIT": 1.0}';
-            if (ticker === 'VBR' || ticker === 'VSIAX' || ticker === 'IJS') weights = '{"Small Cap Value": 1.0}';
-            if (ticker === 'VGHAX') weights = '{"Healthcare": 1.0}';
-            if (ticker === 'FXAIX' || ticker === 'VIIIX' || ticker === 'QQQ' || ticker === 'VOO') weights = '{"US Large Cap/SP500/DJIX": 1.0}';
+            if (ticker === 'VMFXX' || ticker === 'VMRXX') { assetClass = 'Cash'; weights = '{"Cash": 1.0}'; }
+            if (ticker === 'FSPSX') { assetClass = 'Developed Market'; weights = '{"Developed Market": 1.0}'; }
+            if (ticker === 'FPADX') { assetClass = 'Emerging Market'; weights = '{"Emerging Market": 1.0}'; }
+            if (ticker === 'FSRNX') { assetClass = 'REIT'; weights = '{"REIT": 1.0}'; }
+            if (ticker === 'VBR' || ticker === 'VSIAX' || ticker === 'IJS') { assetClass = 'Small Cap Value'; weights = '{"Small Cap Value": 1.0}'; }
+            if (ticker === 'VGHAX') { assetClass = 'Healthcare'; weights = '{"Healthcare": 1.0}'; }
+            if (ticker === 'FXAIX' || ticker === 'VIIIX' || ticker === 'QQQ' || ticker === 'VOO') { assetClass = 'US Large Cap/SP500/DJIX'; weights = '{"US Large Cap/SP500/DJIX": 1.0}'; }
             if (ticker === 'VTIVX') {
                 assetType = 'ETF';
-                weights = '{"Total Stock Market": 0.477, "Developed Market": 0.345, "Emerging Market": 0.11, "US Aggregate Bond": 0.125, "ex-US Aggregate Bond": 0.053}';
+                assetClass = 'Target Date';
+                weights = '{"Total Stock Market": 0.54, "Developed Market": 0.27, "Emerging Market": 0.09, "US Aggregate Bond": 0.07, "ex-US Aggregate Bond": 0.03}';
             }
 
-            insert.run(ticker, ticker, `Auto-discovered ${ticker}`, assetType, weights);
+            // Validation Guard: weights must sum to 1.0 (with epsilon)
+            const wObj = JSON.parse(weights);
+            const sum = Object.values(wObj).reduce((a: any, b: any) => a + b, 0) as number;
+            if (Math.abs(sum - 1.0) > 0.001) {
+                console.error(`[Ingest] Invalid composition for ${ticker}: sums to ${sum}`);
+                throw new Error(`Invalid composition for ${ticker}: weights sum to ${sum} (expected 1.0)`);
+            }
+
+            insert.run(ticker, ticker, `Auto-discovered ${ticker}`, assetType, weights, assetClass);
             discovered.push(ticker);
         }
     })();

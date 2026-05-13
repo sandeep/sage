@@ -30,8 +30,8 @@ const REGISTRY = [
     { ticker: 'QQQ',   canonical: 'US Large Cap (NASDAQ)',  description: 'Invesco QQQ Trust, Series 1',                          asset_type: 'ETF',  weights: { 'US Large Cap/SP500/DJIX': 1.0 }, is_core: false, index_tracked: '' },
     { ticker: 'FCNTX', canonical: 'Fidelity Contrafund',    description: 'Fidelity Contrafund',                                  asset_type: 'FUND', weights: { 'US Large Cap/SP500/DJIX': 1.0 }, is_core: false, index_tracked: '' },
     { ticker: 'FOCPX', canonical: 'Fidelity OTC Portfolio', description: 'Fidelity OTC Portfolio',                               asset_type: 'FUND', weights: { 'US Large Cap/SP500/DJIX': 1.0 }, is_core: false, index_tracked: '' },
-    // VTIVX is a fund-of-funds: ~47.7% Total US, ~34.5% Intl Developed, ~12.5% US Bond, ~5.3% Intl Bond
-    { ticker: 'VTIVX', canonical: 'Vanguard Target 2045',   description: 'Vanguard Target Retirement 2045 Fund',                 asset_type: 'FUND', weights: { 'Total Stock Market': 0.477, 'Developed Market': 0.345, 'US Aggregate Bond': 0.125, 'ex-US Aggregate Bond': 0.053 }, is_core: false, index_tracked: '' },
+    // VTIVX is a fund-of-funds: 54% Total US, 36% Intl (27% Dev / 9% EM), 7% US Bond, 3% Intl Bond
+    { ticker: 'VTIVX', canonical: 'Vanguard Target 2045',   description: 'Vanguard Target Retirement 2045 Fund',                 asset_type: 'FUND', weights: { 'Total Stock Market': 0.54, 'Developed Market': 0.27, 'Emerging Market': 0.09, 'US Aggregate Bond': 0.07, 'ex-US Aggregate Bond': 0.03 }, is_core: false, index_tracked: '' },
     { ticker: 'FSTVX', canonical: 'US Large Cap (S&P 500)', description: 'Fidelity Total Market Index (legacy)',                  asset_type: 'FUND', weights: { 'US Large Cap/SP500/DJIX': 1.0 }, is_core: false, index_tracked: '' },
     // Individual stocks
     { ticker: 'AAPL',  canonical: 'Apple Inc',           description: 'Apple Inc',              asset_type: 'EQUITY', weights: { 'US Large Cap/SP500/DJIX': 1.0 }, is_core: false, index_tracked: '' },

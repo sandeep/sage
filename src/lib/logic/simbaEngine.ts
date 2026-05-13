@@ -40,11 +40,7 @@ export const LABEL_TO_SIMBA: Record<string, string> = {
     "Developed Market": "INTL", "INTL": "INTL", "Intl'l Stock": "INTL", "Total Int'l Stock Market": "INTL", "Int'l Small Cap": "INTL", "Int'l Value": "INTL", "International Stock": "INTL",
     "Emerging Market": "EM", "EM": "EM", "Emerging Markets": "EM",
     "US Aggregate Bond": "ITT", "ITT": "ITT", "Bond": "ITT", "US Bond": "ITT", "Total Bond Market": "ITT",
-    "Cash": "Cash", "CASH": "Cash", "Money Market": "Cash",
-    "Healthcare": "TSM",
-    "Energy": "TSM",
-    "Mid-Cap": "LCB",
-    "Non Big (Ext Market/Small Blend)": "SCV"
+    "Cash": "Cash", "CASH": "Cash", "Money Market": "Cash"
 };
 
 /**

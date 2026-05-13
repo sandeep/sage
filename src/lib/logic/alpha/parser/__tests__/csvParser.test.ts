@@ -33,8 +33,8 @@ describe('csvParser', () => {
 2025-01-07,2025-01-07,2025-01-07,,Monthly Gold Fee,GOLD,,5.00,"($5.00)"
 2025-01-08,2025-01-08,2025-01-08,,Interest,INT,,1.25,$1.25
 `;
-        const count = await parseTransactionCsv(csvContent, 'test.csv');
-        expect(count).toBe(7);
+        const summary = await parseTransactionCsv(csvContent, 'test.csv');
+        expect(summary.ingested).toBe(7);
 
         const rows = db.prepare('SELECT * FROM alpha_transactions ORDER BY activity_date').all() as any[];
         expect(rows[0].book).toBe('EQUITY');
@@ -56,8 +56,8 @@ describe('csvParser', () => {
 2025-01-02,2025-01-02,2025-01-02,AAPL,Apple Inc. - Common Stock,Buy,10,150.00,"($1,500.00)"
 2025-01-02,2025-01-02,2025-01-02,AAPL,Apple Inc. - Common Stock,Buy,10,150.00,"($1,500.00)"
 `;
-        const count = await parseTransactionCsv(csvContent, 'test.csv');
-        expect(count).toBe(1);
+        const summary = await parseTransactionCsv(csvContent, 'dedup.csv');
+        expect(summary.ingested).toBe(1);
 
         const rows = db.prepare('SELECT * FROM alpha_transactions').all();
         expect(rows.length).toBe(1);
@@ -69,8 +69,8 @@ describe('csvParser', () => {
 ,,,,,,,
 * This is a disclaimer row
 `;
-        const count = await parseTransactionCsv(csvContent, 'test.csv');
-        expect(count).toBe(1);
+        const summary = await parseTransactionCsv(csvContent, 'dedup.csv');
+        expect(summary.ingested).toBe(1);
     });
 
     it('cleans amount strings correctly', async () => {

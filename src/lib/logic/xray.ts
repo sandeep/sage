@@ -39,10 +39,14 @@ export interface MetricRow {
     contributors?: MetricContributor[];
 }
 
-export function resolveValue(ticker: string, quantity: number | null | undefined, marketValue: number | null): number | null {
-    if (marketValue !== null && marketValue > 0) return marketValue;
+export function resolveValue(ticker: string, quantity: number | null | undefined, marketValue: number | null, asOf?: string): number | null {
+    if (marketValue !== null && marketValue > 0 && !asOf) return marketValue;
     try {
-        const price = db.prepare("SELECT close FROM price_history WHERE ticker = ? ORDER BY date DESC LIMIT 1").get(ticker) as any;
+        const query = asOf 
+            ? "SELECT close FROM price_history WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1"
+            : "SELECT close FROM price_history WHERE ticker = ? ORDER BY date DESC LIMIT 1";
+        const params = asOf ? [ticker, asOf] : [ticker];
+        const price = db.prepare(query).get(...params) as any;
         if (price?.close != null) {
             if (quantity === null || quantity === undefined) return null;
             return quantity * price.close;
@@ -102,7 +106,7 @@ export function calculateHierarchicalMetrics(): MetricRow[] {
                     const h = holdings.find(x => x.ticker === ticker);
                     const accounts = h?.account_list?.split(',').map((name: string) => ({
                         accountName: name,
-                        provider: 'Fidelity',
+                        provider: h?.provider || 'Unknown',
                         value: value
                     })) || [];
 

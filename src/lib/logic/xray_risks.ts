@@ -86,7 +86,9 @@ export function getConcentrationRisks(): Array<{ ticker: string; name: string; p
                 if (!aggregateExposure[c.asset_ticker]) aggregateExposure[c.asset_ticker] = { direct: 0, indirect: 0 };
                 aggregateExposure[c.asset_ticker].indirect += value * c.weight;
             });
-        } catch { /* table might not exist */ }
+        } catch (e) { 
+            console.debug(`[XRayRisks] No look-through data for ${h.ticker}`); 
+        }
     });
 
     return Object.entries(aggregateExposure)

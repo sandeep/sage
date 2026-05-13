@@ -33,9 +33,9 @@ describe('Systematic Recompute Debug with Canonical Data', () => {
         }
         const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
-        const count = await parseTransactionCsv(csvContent, 'AAAA-32a0dca0-7359-5675-9efa-629ca2c43781.csv');
-        console.log(`   ✓ Parsed ${count} transactions.`);
-        expect(count).toBeGreaterThan(0);
+        const summary = await parseTransactionCsv(csvContent, 'AAAA-32a0dca0-7359-5675-9efa-629ca2c43781.csv');
+        console.log(`   ✓ Parsed ${summary.ingested} transactions.`);
+        expect(summary.ingested).toBeGreaterThan(0);
 
         // 3. Test Trade Reconstruction
         console.log('3. Testing Trade Reconstruction...');

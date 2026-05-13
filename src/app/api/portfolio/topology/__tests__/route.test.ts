@@ -17,9 +17,9 @@ describe('GET /api/portfolio/topology', () => {
         db.prepare("INSERT INTO asset_registry (ticker, canonical, weights, asset_type) VALUES ('BND', 'BND', '{}', 'FIXED_INCOME')").run();
         
         // Setup Holdings
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc1', 'VTI', 10, 'EQUITY', 2500)").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc1', 'VXUS', 20, 'EQUITY', 1200)").run();
-        db.prepare("INSERT INTO holdings (account_id, ticker, quantity, asset_type, market_value) VALUES ('acc2', 'BND', 50, 'FIXED_INCOME', 4000)").run();
+        db.prepare("INSERT INTO holdings_ledger (snapshot_date, account_id, ticker, quantity, asset_type, market_value) VALUES (date('now'), 'acc1', 'VTI', 10, 'EQUITY', 2500)").run();
+        db.prepare("INSERT INTO holdings_ledger (snapshot_date, account_id, ticker, quantity, asset_type, market_value) VALUES (date('now'), 'acc1', 'VXUS', 20, 'EQUITY', 1200)").run();
+        db.prepare("INSERT INTO holdings_ledger (snapshot_date, account_id, ticker, quantity, asset_type, market_value) VALUES (date('now'), 'acc2', 'BND', 50, 'FIXED_INCOME', 4000)").run();
     });
 
     it('returns structured nodes and links for the topology', async () => {

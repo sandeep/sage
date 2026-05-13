@@ -42,7 +42,7 @@ export function computeTrackingError(
     if (len < 2) return 0;
     const excess = Array.from({ length: len }, (_, i) => portfolioReturns[i] - benchmarkReturns[i]);
     const mean = excess.reduce((a, b) => a + b, 0) / len;
-    const variance = excess.reduce((a, e) => a + (e - mean) ** 2, 0) / len;
+    const variance = excess.reduce((a, e) => a + (e - mean) ** 2, 0) / (len - 1);
     if (variance < Number.EPSILON) return 0;
     return Math.sqrt(variance * annualizationFactor);
 }
@@ -75,8 +75,8 @@ export function computeUpsideCapture(
         if (benchmarkReturns[i] > 0) up.push({ port: portfolioReturns[i], bench: benchmarkReturns[i] });
     }
     if (up.length === 0) return 0;
-    const portGeo  = up.reduce((p, r) => p * (1 + r.port),  1) ** (1 / up.length) - 1;
-    const benchGeo = up.reduce((p, r) => p * (1 + r.bench), 1) ** (1 / up.length) - 1;
+    const portGeo  = up.reduce((p, r) => p * Math.max(0, 1 + r.port),  1) ** (1 / up.length) - 1;
+    const benchGeo = up.reduce((p, r) => p * Math.max(0, 1 + r.bench), 1) ** (1 / up.length) - 1;
     return benchGeo === 0 ? 0 : portGeo / benchGeo;
 }
 
@@ -93,8 +93,8 @@ export function computeDownsideCapture(
         if (benchmarkReturns[i] < 0) down.push({ port: portfolioReturns[i], bench: benchmarkReturns[i] });
     }
     if (down.length === 0) return 0;
-    const portGeo  = down.reduce((p, r) => p * (1 + r.port),  1) ** (1 / down.length) - 1;
-    const benchGeo = down.reduce((p, r) => p * (1 + r.bench), 1) ** (1 / down.length) - 1;
+    const portGeo  = down.reduce((p, r) => p * Math.max(0, 1 + r.port),  1) ** (1 / down.length) - 1;
+    const benchGeo = down.reduce((p, r) => p * Math.max(0, 1 + r.bench), 1) ** (1 / down.length) - 1;
     return benchGeo === 0 ? 0 : portGeo / benchGeo;
 }
 
