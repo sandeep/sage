@@ -391,15 +391,11 @@ export async function getBookTradeStats(startDate?: string, endDate?: string): P
 
     // 3. Futures Stats
     const futSeries = getSeriesMetrics('fut');
-    const futureTransactions = db.prepare(`
-        SELECT activity_date, amount 
-        FROM alpha_transactions 
-        WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
-        ORDER BY activity_date
-    `).all(...dateFilterActivityParams) as { amount: number }[];
-    const futPnls = futureTransactions.map(r => r.amount);
     
-    const futureTickerCount = db.prepare(`SELECT COUNT(DISTINCT instrument) as n FROM alpha_transactions WHERE trans_code = 'FUTSWP' AND instrument IS NOT NULL AND instrument != '' ${dateFilterActivity}`).get(...dateFilterActivityParams) as { n: number };
+    // Prioritize reconstructed trades for stats, fallback to sweeps for dates without trades
+    const futPnls = dailyBookPnls.map(row => row.fut).filter(p => p !== 0);
+    const futureTickerCount = db.prepare(`SELECT COUNT(DISTINCT symbol) as n FROM alpha_futures_trades`).get() as { n: number };
+    
     const futStats = calculateStats('Futures', futPnls, futureTickerCount.n || 0, futSeries.returns, futSeries.maxDD);
     futStats.benchmarkAlpha = futStats.totalNetPnl;
     futStats.mwr = 0;
