@@ -235,9 +235,22 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
 
     const reconciliation = await reconcileFutures();
 
-    // Aggregate Execution Stats
-    const pnlWins = rows.filter(r => r.pnl > 0);
-    const pnlLosses = rows.filter(r => r.pnl < 0);
+    const dateFilterClose = startDate && endDate ? `AND close_date >= ? AND close_date <= ?` : '';
+    const dateFilterCloseParams = startDate && endDate ? [startDate, endDate] : [];
+
+    // Aggregate Execution Stats from Reconstructed Trades (Evidence)
+    const closedTrades = db.prepare(`
+        SELECT net_pnl as pnl FROM (
+            SELECT net_pnl FROM alpha_futures_trades WHERE 1=1 ${dateFilterClose}
+            UNION ALL
+            SELECT net_pnl FROM alpha_option_trades WHERE close_date IS NOT NULL ${dateFilterClose}
+            UNION ALL
+            SELECT net_pnl FROM alpha_equity_trades WHERE close_date IS NOT NULL ${dateFilterClose}
+        )
+    `).all(...dateFilterCloseParams, ...dateFilterCloseParams, ...dateFilterCloseParams) as { pnl: number }[];
+
+    const pnlWins = closedTrades.filter(r => r.pnl > 0);
+    const pnlLosses = closedTrades.filter(r => r.pnl < 0);
     const grossGains = pnlWins.reduce((a, b) => a + b.pnl, 0);
     const grossLosses = Math.abs(pnlLosses.reduce((a, b) => a + b.pnl, 0));
 
@@ -245,9 +258,9 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
         totalPnl, totalDeposited, netReturnPct: totalDeposited > 0 ? totalPnl / totalDeposited : 0,
         twr, annualizedReturn, volatility, sharpeRatio, sortinoRatio, informationRatio,
         calmarRatio, maxDrawdown, cvar95, dollarAlpha, shadowNav, mwr,
-        winRate: pnlWins.length / (pnlWins.length + pnlLosses.length || 1),
+        winRate: pnlWins.length / (closedTrades.length || 1),
         profitFactor: grossLosses > 0 ? grossGains / grossLosses : grossGains > 0 ? Infinity : 0,
-        expectedValue: totalPnl / (rows.length || 1),
+        expectedValue: closedTrades.length > 0 ? (grossGains - grossLosses) / closedTrades.length : 0,
         avgWin: pnlWins.length > 0 ? grossGains / pnlWins.length : 0,
         avgLoss: pnlLosses.length > 0 ? grossLosses / pnlLosses.length : 0,
         vtiTwr,
@@ -434,11 +447,13 @@ export interface TradeLogEntry {
     strike?: number;
     expiry?: string;
     optionType?: string;
+    fills?: any[];
 }
 
 export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', startDate?: string, endDate?: string): Promise<TradeLogEntry[]> {
     const dateFilterClose = startDate && endDate ? `AND close_date >= ? AND close_date <= ?` : '';
     const dateFilterActivity = startDate && endDate ? `AND activity_date >= ? AND activity_date <= ?` : '';
+    const dateFilterTradeDate = startDate && endDate ? `AND trade_date >= ? AND trade_date <= ?` : '';
     const dateFilterParams = startDate && endDate ? [startDate, endDate] : [];
 
     if (type === 'Futures') {
@@ -472,11 +487,34 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
                 0 as pct
             FROM alpha_transactions
             WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
-              AND activity_date NOT IN (SELECT DISTINCT close_date FROM alpha_futures_trades)
             ORDER BY activity_date DESC
         `).all(...dateFilterParams) as TradeLogEntry[];
         
-        return [...trades, ...sweeps].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // Enhance sweeps with fills (evidence)
+        const fills = db.prepare(`
+            SELECT 
+                trade_date as date,
+                symbol,
+                qty_long,
+                qty_short,
+                trade_price as price,
+                commission + exchange_fees + nfa_fees as fees
+            FROM alpha_futures_fills
+            WHERE 1=1 ${dateFilterTradeDate}
+        `).all(...dateFilterParams) as any[];
+
+        const fillMap = new Map<string, any[]>();
+        fills.forEach(f => {
+            if (!fillMap.has(f.date)) fillMap.set(f.date, []);
+            fillMap.get(f.date)!.push(f);
+        });
+
+        const enhancedSweeps = sweeps.map(s => ({
+            ...s,
+            fills: fillMap.get(s.date) || []
+        }));
+        
+        return [...trades, ...enhancedSweeps].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
 
     if (type === 'Options') {

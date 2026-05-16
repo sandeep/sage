@@ -229,12 +229,54 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                                 </td>
                                             </tr>
                                             {isExpanded && (
-                                                <tr className="bg-zinc-950/80 border-l-2 border-indigo-500/30">
-                                                    <td colSpan={8} className="px-12 py-6">
-                                                        <div className="flex flex-col items-center justify-center space-y-2 py-8 border border-dashed border-zinc-900 rounded-sm">
-                                                            <div className="ui-label text-zinc-500">Execution Proof Pending</div>
-                                                            <div className="ui-caption text-zinc-600">Import PDF Statement to reconcile individual fills</div>
-                                                        </div>
+                                                <tr className="bg-zinc-950/80 border-l-2 border-indigo-500/50">
+                                                    <td colSpan={8} className="px-12 py-8">
+                                                        {trade.fills && trade.fills.length > 0 ? (
+                                                            <div className="space-y-6">
+                                                                <div className="flex items-center gap-4 border-b border-zinc-900 pb-4">
+                                                                    <div className="bg-indigo-500/10 text-indigo-400 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-indigo-500/20">
+                                                                        Execution Proof
+                                                                    </div>
+                                                                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                                                                        {trade.fills.length} Granular Fills Extracted from PDF
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div className="grid grid-cols-4 gap-8">
+                                                                    <table className="col-span-4 w-full">
+                                                                        <thead>
+                                                                            <tr className="text-[9px] text-zinc-600 uppercase font-black tracking-widest border-b border-zinc-900/50">
+                                                                                <th className="pb-2">Contract</th>
+                                                                                <th className="pb-2 text-right">Long</th>
+                                                                                <th className="pb-2 text-right">Short</th>
+                                                                                <th className="pb-2 text-right">Price</th>
+                                                                                <th className="pb-2 text-right">Fees</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-zinc-900/30">
+                                                                            {trade.fills.map((f, idx) => (
+                                                                                <tr key={idx} className="group/fill">
+                                                                                    <td className="py-2 text-[10px] font-black text-zinc-400 uppercase">{f.symbol}</td>
+                                                                                    <td className="py-2 text-[10px] font-mono text-right text-emerald-500/70">{f.qty_long > 0 ? f.qty_long : '—'}</td>
+                                                                                    <td className="py-2 text-[10px] font-mono text-right text-rose-500/70">{f.qty_short > 0 ? f.qty_short : '—'}</td>
+                                                                                    <td className="py-2 text-[10px] font-mono text-right text-zinc-200">{f.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                                                    <td className="py-2 text-[10px] font-mono text-right text-rose-400/60">{f.fees > 0 ? fmtUSD(-f.fees) : '—'}</td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                                
+                                                                <div className="text-[9px] text-zinc-600 italic leading-relaxed max-w-2xl">
+                                                                    * Total daily cash settlement (FUTSWP) reconciles the net mark-to-market change of all open and closed contracts. The fills above provide the forensic trail for this settlement period.
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center justify-center space-y-2 py-8 border border-dashed border-zinc-900 rounded-sm">
+                                                                <div className="ui-label text-zinc-500 italic">Execution Proof Pending</div>
+                                                                <div className="ui-caption text-zinc-600">Import PDF Statement to reconcile individual fills</div>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             )}

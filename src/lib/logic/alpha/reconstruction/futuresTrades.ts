@@ -35,7 +35,7 @@ export async function reconstructFuturesTrades(): Promise<number> {
             SUM(exchange_fees) as exchange_fees,
             SUM(nfa_fees) as nfa_fees
         FROM alpha_futures_fills 
-        GROUP BY trade_date, symbol, contract_month, trade_price
+        GROUP BY trade_date, symbol, contract_month, trade_price, multiplier
         ORDER BY trade_date ASC
     `).all() as Fill[];
 
