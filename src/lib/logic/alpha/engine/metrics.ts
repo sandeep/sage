@@ -1,6 +1,8 @@
 import db from '@/lib/db/client';
 import { getStrategicSettings } from '@/lib/db/settings';
 
+import { reconcileFutures, MonthReconciliation } from './reconciliation';
+
 export interface AlphaMetrics {
     totalPnl: number;
     totalDeposited: number;
@@ -24,6 +26,8 @@ export interface AlphaMetrics {
     avgWin: number;
     avgLoss: number;
     vtiTwr?: number; // Benchmark Parity
+    // Veracity Parity
+    reconciliation: MonthReconciliation[];
 }
 
 export interface BookTradeStats {
@@ -139,7 +143,8 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
             totalPnl: 0, totalDeposited: 0, netReturnPct: 0, twr: 0, annualizedReturn: 0,
             volatility: 0, sharpeRatio: 0, sortinoRatio: 0, informationRatio: 0,
             calmarRatio: 0, maxDrawdown: 0, cvar95: 0, dollarAlpha: 0, shadowNav: 0, mwr: 0,
-            winRate: 0, profitFactor: 0, expectedValue: 0, avgWin: 0, avgLoss: 0, vtiTwr: 0
+            winRate: 0, profitFactor: 0, expectedValue: 0, avgWin: 0, avgLoss: 0, vtiTwr: 0,
+            reconciliation: []
         };
     }
 
@@ -228,6 +233,8 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const terminalDate = rows.length > 0 ? rows[rows.length - 1].date : new Date().toISOString().split('T')[0];
     const mwr = calculateMWR(cashflows, currentNav, terminalDate);
 
+    const reconciliation = await reconcileFutures();
+
     // Aggregate Execution Stats
     const pnlWins = rows.filter(r => r.pnl > 0);
     const pnlLosses = rows.filter(r => r.pnl < 0);
@@ -243,7 +250,8 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
         expectedValue: totalPnl / (rows.length || 1),
         avgWin: pnlWins.length > 0 ? grossGains / pnlWins.length : 0,
         avgLoss: pnlLosses.length > 0 ? grossLosses / pnlLosses.length : 0,
-        vtiTwr
+        vtiTwr,
+        reconciliation
     };
 }
 

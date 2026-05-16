@@ -72,6 +72,46 @@ export default async function ActiveAlpha({ searchParams }: Props) {
                         <MetricParityGrid metrics={metrics} />
                     </section>
 
+                    <section className="space-y-4">
+                        <div className="ui-section-header text-active-accent">
+                            <h2>Data Veracity Audit</h2>
+                            <span>Proof in the Pudding: PDF Trade Reconstructions matched against CSV Cash Reality</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {metrics.reconciliation.map(rec => (
+                                <div key={rec.month} className="bg-zinc-950 border border-zinc-900 p-4 rounded-sm space-y-3">
+                                    <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+                                        <span className="text-[10px] font-black uppercase text-zinc-500">{new Date(rec.month + '-01').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                            rec.status === 'MATCH' ? 'bg-emerald-500/10 text-emerald-500' : 
+                                            rec.status === 'MISMATCH' ? 'bg-rose-500/10 text-rose-500' : 'bg-zinc-800 text-zinc-500'
+                                        }`}>
+                                            {rec.status}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <span className="text-[8px] text-zinc-600 uppercase font-bold block">CSV Ledger</span>
+                                            <span className="text-xs font-mono font-black text-zinc-300">{fmtUSD(rec.csvTotal)}</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[8px] text-zinc-600 uppercase font-bold block">PDF Trades</span>
+                                            <span className="text-xs font-mono font-black text-zinc-300">{fmtUSD(rec.pdfTotal)}</span>
+                                        </div>
+                                    </div>
+                                    {Math.abs(rec.delta) > 0.01 && (
+                                        <div className="pt-2 border-t border-zinc-900/50 flex justify-between items-center">
+                                            <span className="text-[8px] text-zinc-600 uppercase font-bold">Delta</span>
+                                            <span className={`text-[10px] font-mono font-black ${rec.status === 'MATCH' ? 'text-zinc-500' : 'text-rose-400'}`}>
+                                                {fmtUSD(rec.delta)}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
                     <section className="space-y-8">
                         <div className="ui-section-header">
                             <h2>Performance By Book</h2>
