@@ -28,34 +28,17 @@ export async function aggregateDailyPnl() {
                 SUM(deposits) as deposits,
                 SUM(futures_pnl + options_pnl + equity_pnl + fees + income) as daily_total
             FROM (
-                -- Futures P&L (Prioritize reconstructed trades from PDF, fallback to CSV sweeps)
+                -- Futures P&L (Strictly from CSV as Source of Truth for Cash)
                 SELECT 
-                    date,
-                    SUM(amount) as futures_pnl,
-                    0 as options_pnl,
-                    0 as equity_pnl,
-                    0 as fees,
-                    0 as income,
+                    activity_date as date, 
+                    amount as futures_pnl, 
+                    0 as options_pnl, 
+                    0 as equity_pnl, 
+                    0 as fees, 
+                    0 as income, 
                     0 as deposits
-                FROM (
-                    -- Reconstructed trades from PDF (Deeper accuracy)
-                    SELECT 
-                        close_date as date, 
-                        net_pnl as amount
-                    FROM alpha_futures_trades
-                    WHERE close_date IS NOT NULL
-
-                    UNION ALL
-
-                    -- CSV Sweeps (Fallback for dates without PDF data)
-                    SELECT 
-                        activity_date as date, 
-                        amount
-                    FROM alpha_transactions
-                    WHERE trans_code = 'FUTSWP'
-                      AND activity_date NOT IN (SELECT DISTINCT close_date FROM alpha_futures_trades)
-                )
-                GROUP BY date
+                FROM alpha_transactions
+                WHERE trans_code = 'FUTSWP'
                 
                 UNION ALL
                 
