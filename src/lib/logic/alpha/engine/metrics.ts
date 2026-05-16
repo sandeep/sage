@@ -451,8 +451,6 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
             ORDER BY close_date DESC
         `).all(...dateFilterParams) as TradeLogEntry[];
 
-        if (trades.length > 0) return trades;
-
         const sweeps = db.prepare(`
             SELECT 
                 activity_date as date,
@@ -465,9 +463,11 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
                 0 as pct
             FROM alpha_transactions
             WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
+              AND activity_date NOT IN (SELECT DISTINCT close_date FROM alpha_futures_trades)
             ORDER BY activity_date DESC
         `).all(...dateFilterParams) as TradeLogEntry[];
-        return sweeps;
+        
+        return [...trades, ...sweeps].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
 
     if (type === 'Options') {
