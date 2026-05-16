@@ -10,7 +10,7 @@ export default function Header() {
   const { activeConsole, setSyncOpen } = useWorkspace();
   const { privacy, toggle } = usePrivacy();
 
-  const isActive = pathname.startsWith('/alpha');
+  const isActive = pathname.startsWith('/active');
 
   const syncColor = isActive ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-emerald-600 hover:bg-emerald-500';
   const syncLabel = isActive ? 'Import Alpha Data' : 'Sync Fidelity 360 Data';
@@ -18,7 +18,7 @@ export default function Header() {
 
   const handleSyncClick = () => {
     if (isActive) {
-      router.push('/alpha/import');
+      router.push('/active/import');
     } else {
       setSyncOpen(true);
     }

@@ -21,6 +21,15 @@ export default function ImportClient() {
                 method: 'POST',
                 body: formData
             });
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error(`[Upload] Server returned ${res.status}: ${errorText}`);
+                setStatus({ msg: `Server Error (${res.status}): ${errorText.substring(0, 100)}`, type: 'error' });
+                setLoading(false);
+                return;
+            }
+
             const data = await res.json();
             
             if (data.error) {

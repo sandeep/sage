@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db/client';
+
 import { detectFileType } from '@/lib/logic/alpha/parser/detectFileType';
 import { parseTransactionCsv, ParseSummary } from '@/lib/logic/alpha/parser/csvParser';
 import { parseEquityStatement } from '@/lib/logic/alpha/parser/equityStatementParser';
@@ -9,6 +10,7 @@ import { reconstructOptionTrades } from '@/lib/logic/alpha/reconstruction/option
 import { reconstructEquityTrades } from '@/lib/logic/alpha/reconstruction/equityTrades';
 import { aggregateDailyPnl } from '@/lib/logic/alpha/engine/dailyPnl';
 import { reconstructShadowVti } from '@/lib/logic/alpha/engine/shadowPortfolio';
+import { parsePdfIsolated } from '@/lib/ingest/pdfIsolatedParser';
 
 export async function POST(req: NextRequest) {
     try {
@@ -37,11 +39,10 @@ export async function POST(req: NextRequest) {
             try {
                 if (fileName.toLowerCase().endsWith('.pdf')) {
                     try {
-                        const pdf = require('pdf-parse');
-                        const data = await pdf(buffer);
-                        firstPageText = data.text;
+                        // Use isolated parser to bypass Next.js environment issues
+                        firstPageText = await parsePdfIsolated(buffer);
                     } catch (pdfErr: any) {
-                        console.error('PDF Parse internal error:', pdfErr);
+                        console.error(`[Import] PDF Isolated Parse failure for ${fileName}:`, pdfErr.message);
                         throw new Error(`PDF engine failure: ${pdfErr.message}`);
                     }
                 }
