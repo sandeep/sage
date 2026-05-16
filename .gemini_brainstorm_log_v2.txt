@@ -1,4 +1,0 @@
-{"type":"server-started","port":50040,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:50040","screen_dir":"/Users/sandeep/Developer/sage2.0/.superpowers/brainstorm/65076-1778542791/content","state_dir":"/Users/sandeep/Developer/sage2.0/.superpowers/brainstorm/65076-1778542791/state"}
-{"type":"screen-added","file":"/Users/sandeep/Developer/sage2.0/.superpowers/brainstorm/65076-1778542791/content/execution-table-mockup.html"}
-{"type":"screen-added","file":"/Users/sandeep/Developer/sage2.0/.superpowers/brainstorm/65076-1778542791/content/rebalance-model-comparison.html"}
-{"type":"server-stopped","reason":"idle timeout"}
