@@ -119,13 +119,22 @@ export function parseGenericHoldings(csvContent: string): ParseResult {
     const header = rawHeader.map(h => h.toLowerCase().replace(/^"|"$/g, '').trim());
     
     // 2. Map Column Indices
-    const tickerIdx   = header.findIndex(h => h === 'symbol' || h === 'ticker');
-    const quantityIdx = header.findIndex(h => h === 'quantity');
-    const accNumIdx   = header.findIndex(h => h === 'account number' || h === 'accountnumber');
-    const accNameIdx  = header.findIndex(h => h === 'account name' || h === 'accountname');
-    const descIdx     = header.findIndex(h => h === 'description' || h === 'name');
-    const valueIdx    = header.findIndex(h => h === 'current value' || h === 'market value' || h === 'value');
-    const costIdx     = header.findIndex(h => h === 'cost basis total' || h === 'cost basis');
+    let tickerIdx   = header.findIndex(h => h === 'symbol' || h === 'ticker');
+    let quantityIdx = header.findIndex(h => h === 'quantity');
+    let accNumIdx   = header.findIndex(h => h.includes('account number') || h.includes('accountnumber'));
+    let accNameIdx  = header.findIndex(h => h.includes('account name') || h.includes('accountname'));
+    let descIdx     = header.findIndex(h => h === 'description' || h === 'name');
+    let valueIdx    = header.findIndex(h => h.includes('value'));
+    let costIdx     = header.findIndex(h => h.includes('cost basis'));
+
+    // Positional Fallbacks (Forensic Mode)
+    if (tickerIdx === -1) tickerIdx = 2;
+    if (quantityIdx === -1) quantityIdx = 4;
+    if (accNumIdx === -1) accNumIdx = 0;
+    if (accNameIdx === -1) accNameIdx = 1;
+    if (descIdx === -1) descIdx = 3;
+    if (valueIdx === -1) valueIdx = 7;
+    if (costIdx === -1) costIdx = 13;
 
     const FOOTER_PATTERNS = [
         'the data and information', 'brokerage services', 'date downloaded',

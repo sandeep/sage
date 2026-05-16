@@ -4,7 +4,7 @@ export function calculateSharpeRatio(returns: number[], riskFreeRate: number = 0
     if (returns.length === 0) return 0;
     
     const meanReturn = returns.reduce((a, b) => a + b) / returns.length;
-    const variance = returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / returns.length;
+    const variance = returns.length < 2 ? 0 : returns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / (returns.length - 1);
     const stdDev = Math.sqrt(variance);
     
     if (stdDev === 0) return 0;
@@ -19,7 +19,7 @@ export function calculateSortinoRatio(returns: number[], riskFreeRate: number = 
     
     if (downsideReturns.length === 0) return 0;
     
-    const downsideVariance = downsideReturns.reduce((a, b) => a + Math.pow(b - riskFreeRate, 2), 0) / downsideReturns.length;
+    const downsideVariance = downsideReturns.length < 2 ? 0 : downsideReturns.reduce((a, b) => a + Math.pow(b - riskFreeRate, 2), 0) / (downsideReturns.length - 1);
     const downsideStdDev = Math.sqrt(downsideVariance);
     
     if (downsideStdDev === 0) return 0;

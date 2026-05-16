@@ -157,7 +157,7 @@ export function getExpenseRisks(): ExpenseRisk[] {
         if (!primaryCat) return;
 
         // Use resolveInstrument to find the designated "best" ticker for this account and category
-        const resolution = resolveInstrument(h.account_id, primaryCat);
+        const resolution = resolveInstrument(h.account_id, primaryCat, { trueOptimal: true });
         const bestAltTicker = resolution.ticker;
         
         console.log(`[DEBUG] Holding: ${h.ticker} in ${h.account_id}, Cat: ${primaryCat}, Resolution: ${bestAltTicker}`);

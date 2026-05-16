@@ -104,9 +104,9 @@ function calculateMaxDrawdownFromPnl(pnlSeries: number[]): number {
 }
 
 function calculateSeriesVolatility(returns: number[]): number {
-    if (returns.length === 0) return 0;
+    if (returns.length < 2) return 0;
     const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
-    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (returns.length - 1);
     return Math.sqrt(variance * 252);
 }
 
@@ -194,12 +194,12 @@ export async function calculateAlphaMetrics(startDate?: string, endDate?: string
     const annualizedReturn = years > 0 ? Math.pow(1 + twr, 1 / years) - 1 : 0;
 
     const meanReturn = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
-    const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / dailyReturns.length;
+    const variance = dailyReturns.length < 2 ? 0 : dailyReturns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / (dailyReturns.length - 1);
     const volatility = Math.sqrt(variance * 252);
     const sharpeRatio = volatility > 0 ? (annualizedReturn - rf) / volatility : 0;
 
     const negativeReturns = dailyReturns.filter(r => r < 0);
-    const downsideVariance = negativeReturns.reduce((a, b) => a + Math.pow(b, 2), 0) / dailyReturns.length;
+    const downsideVariance = dailyReturns.length < 2 ? 0 : negativeReturns.reduce((a, b) => a + Math.pow(b, 2), 0) / (dailyReturns.length - 1);
     const downsideVol = Math.sqrt(downsideVariance * 252);
     const sortinoRatio = downsideVol > 0 ? (annualizedReturn - rf) / downsideVol : 0;
 
@@ -542,7 +542,7 @@ function calculateStats(
         sharpeRatio = vol > 0 ? (meanReturn * 252) / vol : 0;
     } else {
         const mean = totalNetPnl / pnls.length;
-        const variance = pnls.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pnls.length;
+        const variance = pnls.length < 2 ? 0 : pnls.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (pnls.length - 1);
         const stdDev = Math.sqrt(variance);
         sharpeRatio = stdDev > 0 ? mean / stdDev : 0;
     }

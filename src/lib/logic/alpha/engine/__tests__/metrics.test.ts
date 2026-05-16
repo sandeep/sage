@@ -123,11 +123,12 @@ describe('Alpha Metrics Engine', () => {
     it('should compute refined Sharpe and Calmar metrics for all books', async () => {
         // Setup daily PNL for Calmar (drawdown)
         db.prepare(`
-            INSERT INTO alpha_daily_pnl (date, futures_pnl, options_pnl, equity_pnl, daily_total, deposits)
+            INSERT INTO alpha_daily_pnl (date, futures_pnl, options_pnl, equity_pnl, daily_total, deposits, nav)
             VALUES 
-                ('2025-01-01', 100.0, 100.0, 100.0, 300.0, 0.0),
-                ('2025-01-02', -50.0, -50.0, -50.0, -150.0, 0.0),
-                ('2025-01-03', 200.0, 200.0, 200.0, 600.0, 0.0)
+                ('2025-01-01', 100.0, 100.0, 100.0, 300.0, 1000.0, 1300.0),
+                ('2025-01-02', -50.0, -50.0, -50.0, -150.0, 0.0, 1150.0),
+                ('2025-01-03', 200.0, 200.0, 200.0, 600.0, 0.0, 1750.0),
+                ('2025-01-04', 300.0, 300.0, 300.0, 900.0, 0.0, 2650.0)
         `).run();
 
         // Setup transactions for Futures Volatility (FUTSWP)
@@ -136,23 +137,26 @@ describe('Alpha Metrics Engine', () => {
             VALUES 
                 ('2025-01-01', 'FUTSWP', 100.0, 'FUTURES_CASH', 'test.csv', 'ES'),
                 ('2025-01-02', 'FUTSWP', -50.0, 'FUTURES_CASH', 'test.csv', 'ES'),
-                ('2025-01-03', 'FUTSWP', 200.0, 'FUTURES_CASH', 'test.csv', 'ES')
+                ('2025-01-03', 'FUTSWP', 200.0, 'FUTURES_CASH', 'test.csv', 'ES'),
+                ('2025-01-04', 'FUTSWP', 300.0, 'FUTURES_CASH', 'test.csv', 'ES')
         `).run();
 
         // Setup Equity trade for Sharpe (returns) - need at least 2 for non-zero vol
         db.prepare(`
             INSERT INTO alpha_equity_trades (instrument, open_date, close_date, open_price, qty, net_pnl)
             VALUES 
-                ('AAPL', '2025-01-01', '2025-01-03', 150.0, 10, 100.0),
-                ('MSFT', '2025-01-01', '2025-01-03', 300.0, 5, -50.0)
+                ('AAPL', '2025-01-01', '2025-01-04', 150.0, 10, 100.0),
+                ('MSFT', '2025-01-01', '2025-01-04', 300.0, 5, -50.0),
+                ('GOOG', '2025-01-01', '2025-01-04', 100.0, 10, 50.0)
         `).run();
 
         // Setup Option trade for Sharpe (returns) - need at least 2 for non-zero vol
         db.prepare(`
             INSERT INTO alpha_option_trades (instrument, option_key, option_type, direction, open_date, open_qty, open_premium, close_date, net_pnl, strike, open_code)
             VALUES 
-                ('SPY', 'SPY CALL 1', 'CALL', 'SHORT', '2025-01-01', 1, 500.0, '2025-01-03', 50.0, 600, 'STO'),
-                ('SPY', 'SPY CALL 2', 'CALL', 'SHORT', '2025-01-01', 1, 400.0, '2025-01-03', -20.0, 590, 'STO')
+                ('SPY', 'SPY CALL 1', 'CALL', 'SHORT', '2025-01-01', 1, 500.0, '2025-01-04', 50.0, 600, 'STO'),
+                ('SPY', 'SPY CALL 2', 'CALL', 'SHORT', '2025-01-01', 1, 400.0, '2025-01-04', -20.0, 590, 'STO'),
+                ('SPY', 'SPY CALL 3', 'CALL', 'SHORT', '2025-01-01', 1, 300.0, '2025-01-04', 10.0, 580, 'STO')
         `).run();
 
         const stats = await getBookTradeStats();

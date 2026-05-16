@@ -30,17 +30,18 @@ describe('Execution Desk E2E Verification', () => {
         db.prepare("INSERT INTO ticker_meta (ticker, name, er) VALUES ('FZROX', 'Fidelity Zero Total Market', 0.0000)").run();
         db.prepare("INSERT INTO ticker_meta (ticker, name, er) VALUES ('CASH', 'Cash', 0.0)").run();
 
-        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core) 
-                   VALUES ('VTIVX', 'Total Stock Market', '{"Total Stock Market":1.0}', 'FUND', 1)`).run();
-        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core) 
-                   VALUES ('VIIIX', 'Total Stock Market', '{"Total Stock Market":1.0}', 'FUND', 1)`).run();
-        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core) 
-                   VALUES ('FZROX', 'Total Stock Market', '{"Total Stock Market":1.0}', 'FUND', 1)`).run();
+        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core, asset_class) 
+                   VALUES ('VTIVX', 'Vanguard Target 2045', '{"Total Stock Market":1.0}', 'FUND', 1, 'Total Stock Market')`).run();
+        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core, asset_class) 
+                   VALUES ('VIIIX', 'Vanguard Institutional', '{"Total Stock Market":1.0}', 'FUND', 1, 'Total Stock Market')`).run();
+        db.prepare(`INSERT INTO asset_registry (ticker, canonical, weights, asset_type, is_core, asset_class) 
+                   VALUES ('FZROX', 'Fidelity Zero Total Market', '{"Total Stock Market":1.0}', 'FUND', 1, 'Total Stock Market')`).run();
 
-        // 4. SEED STRATEGY (100% Total Stock Market)
+        // 4. SEED STRATEGY (100% Total Stock Market at Level 2)
         db.prepare("DELETE FROM allocation_nodes").run();
-        db.prepare("INSERT INTO allocation_nodes (label, parent_label, weight, level) VALUES ('Portfolio', null, 1.0, 0)").run();
-        db.prepare("INSERT INTO allocation_nodes (label, parent_label, weight, level) VALUES ('Total Stock Market', 'Portfolio', 1.0, 1)").run();
+        db.prepare("INSERT INTO allocation_nodes (label, parent_label, weight, level) VALUES ('Stock', null, 1.0, 0)").run();
+        db.prepare("INSERT INTO allocation_nodes (label, parent_label, weight, level) VALUES ('Domestic', 'Stock', 1.0, 1)").run();
+        db.prepare("INSERT INTO allocation_nodes (label, parent_label, weight, level) VALUES ('Total Stock Market', 'Domestic', 1.0, 2)").run();
 
         // 5. EXECUTE ENGINE
         const count = await generateDirectives();
@@ -50,10 +51,12 @@ describe('Execution Desk E2E Verification', () => {
 
         // VERIFY: Expensive fund swap (OPTIMIZATION)
         // VTIVX in Vanguard should be swapped for VIIIX
-        const optimization = directives.find(d => d.type === 'OPTIMIZATION' && d.source_ticker === 'VTIVX');
-        expect(optimization).toBeDefined();
-        expect(optimization.target_ticker).toBe('VIIIX');
-        expect(optimization.amount).toBe(100000); // Full value
+        const vanOptimizationTranches = directives.filter(d => d.type === 'OPTIMIZATION' && d.source_ticker === 'VTIVX');
+        expect(vanOptimizationTranches.length).toBeGreaterThan(0);
+        expect(vanOptimizationTranches[0].target_ticker).toBe('VIIIX');
+        
+        const totalOptimizedAmount = vanOptimizationTranches.reduce((sum, d) => sum + d.amount, 0);
+        expect(totalOptimizedAmount).toBe(100000); // Full value summed across tranches
 
         // VERIFY: Fidelity Ticker Resolution (FZROX)
         // Cash in Fidelity should buy FZROX

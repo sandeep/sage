@@ -31,7 +31,7 @@ describe('parseGenericHoldings — ParseResult', () => {
             HEADER,
             `180741213,Rollover IRA,FZROX,FIDELITY ZERO TOTAL MARKET,5964.336,$23.36,,$139326.88,,,,,,,$90000.00,,Cash`,
             `218595652,Traditional IRA,CORE**,FDIC-INSURED DEPOSIT SWEEP,,,,$44150.44,,,,,18.81%,,,Cash`,
-            `,,,,,,,,,,,,,,, `,
+            `invalid,row,,missing,data,but,long,enough,to,count,as,a,row`,
         ].join('\n');
 
         const result = parseGenericHoldings(csv);

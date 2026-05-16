@@ -4,6 +4,11 @@ import { detectFileType } from '@/lib/logic/alpha/parser/detectFileType';
 import { parseTransactionCsv, ParseSummary } from '@/lib/logic/alpha/parser/csvParser';
 import { parseEquityStatement } from '@/lib/logic/alpha/parser/equityStatementParser';
 import { parseFuturesStatement } from '@/lib/logic/alpha/parser/futuresStatementParser';
+import { reconstructFuturesTrades } from '@/lib/logic/alpha/reconstruction/futuresTrades';
+import { reconstructOptionTrades } from '@/lib/logic/alpha/reconstruction/optionTrades';
+import { reconstructEquityTrades } from '@/lib/logic/alpha/reconstruction/equityTrades';
+import { aggregateDailyPnl } from '@/lib/logic/alpha/engine/dailyPnl';
+import { reconstructShadowVti } from '@/lib/logic/alpha/engine/shadowPortfolio';
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,6 +21,7 @@ export async function POST(req: NextRequest) {
 
         const results = [];
         const importedAt = new Date().toISOString();
+        let totalParsed = 0;
 
         for (const file of files) {
             const buffer = Buffer.from(await file.arrayBuffer());
@@ -69,6 +75,8 @@ export async function POST(req: NextRequest) {
                     errorMsg = 'Unrecognized file format';
                 }
 
+                if (recordsParsed > 0) totalParsed += recordsParsed;
+
             } catch (err: any) {
                 console.error(`Error processing file ${fileName}:`, err);
                 status = 'ERROR';
@@ -95,6 +103,16 @@ export async function POST(req: NextRequest) {
                 skippedCount,
                 errorMsg
             });
+        }
+
+        // Trigger full reconstruction if any new data was added
+        if (totalParsed > 0) {
+            console.log(`[Import] Triggering reconstruction for ${totalParsed} new records...`);
+            await reconstructFuturesTrades();
+            await reconstructOptionTrades();
+            await reconstructEquityTrades();
+            await aggregateDailyPnl();
+            await reconstructShadowVti();
         }
 
         return NextResponse.json({ results });

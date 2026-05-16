@@ -16,6 +16,7 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         canonical     TEXT NOT NULL,
         description   TEXT,
         asset_type    TEXT,
+        asset_class   TEXT,
         geography     TEXT,
         weights       TEXT NOT NULL,
         proxy_weights TEXT,
@@ -110,6 +111,9 @@ export function runMigrations(db: InstanceType<typeof Database>) {
 
     // Asset Registry
     const registryCols = db.prepare("PRAGMA table_info(asset_registry)").all() as any[];
+    if (!registryCols.find((c: any) => c.name === 'asset_class')) {
+        db.exec("ALTER TABLE asset_registry ADD COLUMN asset_class TEXT");
+    }
     if (!registryCols.find((c: any) => c.name === 'custom_er')) {
         db.exec("ALTER TABLE asset_registry ADD COLUMN custom_er REAL");
     }
@@ -344,7 +348,19 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         qty_short        REAL NOT NULL DEFAULT 0,
         trade_price      REAL NOT NULL,
         multiplier       REAL NOT NULL,
-        UNIQUE(source_file, trade_date, symbol, contract_month, trade_price, qty_long, qty_short)
+        commission       REAL,
+        exchange_fees    REAL,
+        nfa_fees         REAL,
+        UNIQUE(trade_date, symbol, contract_month, trade_price, qty_long, qty_short)
+    )`);
+
+    db.exec(`CREATE TABLE IF NOT EXISTS alpha_futures_journal (
+        id              INTEGER PRIMARY KEY,
+        trade_date      TEXT NOT NULL,
+        description     TEXT,
+        amount          REAL NOT NULL,
+        source_file     TEXT NOT NULL,
+        UNIQUE(trade_date, description, amount)
     )`);
 
     db.exec(`CREATE TABLE IF NOT EXISTS alpha_futures_trades (
@@ -470,7 +486,35 @@ export function runMigrations(db: InstanceType<typeof Database>) {
         }
     }
 
-    // Daily P&L columns
+    // Alpha Futures Fills Columns and Constraint
+    const futuresFillsCols = db.prepare("PRAGMA table_info(alpha_futures_fills)").all() as any[];
+    if (!futuresFillsCols.find((c: any) => c.name === 'commission')) {
+        // Since we also want to fix the UNIQUE constraint, we'll recreate the table if we're adding columns
+        console.log('Migration: Hardening alpha_futures_fills schema...');
+        db.transaction(() => {
+            db.exec("ALTER TABLE alpha_futures_fills RENAME TO alpha_futures_fills_old");
+            db.exec(`CREATE TABLE alpha_futures_fills (
+                id               INTEGER PRIMARY KEY,
+                source_file      TEXT NOT NULL,
+                trade_date       TEXT NOT NULL,
+                symbol           TEXT NOT NULL,
+                contract_month   TEXT NOT NULL,
+                qty_long         REAL NOT NULL DEFAULT 0,
+                qty_short        REAL NOT NULL DEFAULT 0,
+                trade_price      REAL NOT NULL,
+                multiplier       REAL NOT NULL,
+                commission       REAL DEFAULT 0,
+                exchange_fees    REAL DEFAULT 0,
+                nfa_fees         REAL DEFAULT 0,
+                UNIQUE(trade_date, symbol, contract_month, trade_price, qty_long, qty_short)
+            )`);
+            db.exec(`INSERT INTO alpha_futures_fills (id, source_file, trade_date, symbol, contract_month, qty_long, qty_short, trade_price, multiplier)
+                     SELECT id, source_file, trade_date, symbol, contract_month, qty_long, qty_short, trade_price, multiplier FROM alpha_futures_fills_old`);
+            db.exec("DROP TABLE alpha_futures_fills_old");
+        })();
+    }
+
+    // Alpha Daily P&L columns
     const pnlCols = db.prepare("PRAGMA table_info(alpha_daily_pnl)").all() as any[];
     if (!pnlCols.find((c: any) => c.name === 'nav')) {
         db.exec("ALTER TABLE alpha_daily_pnl ADD COLUMN nav REAL DEFAULT 0");

@@ -28,7 +28,7 @@ export async function aggregateDailyPnl() {
                 SUM(deposits) as deposits,
                 SUM(futures_pnl + options_pnl + equity_pnl + fees + income) as daily_total
             FROM (
-                -- Futures P&L (All transactions marked as FUTURES_CASH)
+                -- Futures P&L (Daily cash settlement from FUTSWP)
                 SELECT 
                     activity_date as date, 
                     amount as futures_pnl, 
@@ -38,11 +38,11 @@ export async function aggregateDailyPnl() {
                     0 as income, 
                     0 as deposits
                 FROM alpha_transactions
-                WHERE book = 'FUTURES_CASH'
+                WHERE trans_code = 'FUTSWP'
                 
                 UNION ALL
                 
-                -- Options P&L (from alpha_option_trades)
+                -- Options P&L (Realized on close)
                 SELECT 
                     close_date as date, 
                     0 as futures_pnl, 
@@ -56,7 +56,7 @@ export async function aggregateDailyPnl() {
                 
                 UNION ALL
                 
-                -- Equity P&L (from alpha_equity_trades)
+                -- Equity P&L (Realized on close)
                 SELECT 
                     close_date as date, 
                     0 as futures_pnl, 
@@ -70,7 +70,7 @@ export async function aggregateDailyPnl() {
                 
                 UNION ALL
                 
-                -- Fees
+                -- Fees (GOLD, MINT, etc)
                 SELECT 
                     activity_date as date, 
                     0 as futures_pnl, 
@@ -84,7 +84,7 @@ export async function aggregateDailyPnl() {
                 
                 UNION ALL
                 
-                -- Income
+                -- Income (Interest, etc)
                 SELECT 
                     activity_date as date, 
                     0 as futures_pnl, 
@@ -98,7 +98,7 @@ export async function aggregateDailyPnl() {
                 
                 UNION ALL
                 
-                -- Deposits
+                -- External Cash Flow (ACH, Dividends from outside)
                 SELECT 
                     activity_date as date, 
                     0 as futures_pnl, 

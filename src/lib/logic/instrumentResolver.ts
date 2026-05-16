@@ -49,26 +49,28 @@ const DEFAULT_MAP: Record<string, string> = {
     'Cash': 'SGOV',
 };
 
-export function resolveInstrument(accountId: string, assetClass: string): InstrumentResolution {
+export function resolveInstrument(accountId: string, assetClass: string, options: { trueOptimal?: boolean } = {}): InstrumentResolution {
     const account = db.prepare("SELECT provider FROM accounts WHERE id = ?").get(accountId) as { provider: string } | undefined;
     const provider = account?.provider ?? 'UNKNOWN';
 
     // Tier D: already held in this account, maps to this asset class
-    const held = db.prepare(`
-        SELECT hl.ticker FROM holdings_ledger hl
-        JOIN asset_registry ar ON ar.ticker = hl.ticker
-        WHERE hl.account_id = ?
-          AND hl.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_ledger WHERE account_id = ?)
-          AND ar.weights LIKE ? ESCAPE '\\'
-        LIMIT 1
-    `).get(accountId, accountId, `%"${assetClass.replace(/[%_\\]/g, '\\$&')}":%`) as { ticker: string } | undefined;
+    if (!options.trueOptimal) {
+        const held = db.prepare(`
+            SELECT hl.ticker FROM holdings_ledger hl
+            JOIN asset_registry ar ON ar.ticker = hl.ticker
+            WHERE hl.account_id = ?
+              AND hl.snapshot_date = (SELECT MAX(snapshot_date) FROM holdings_ledger WHERE account_id = ?)
+              AND ar.weights LIKE ? ESCAPE '\\'
+            LIMIT 1
+        `).get(accountId, accountId, `%"${assetClass.replace(/[%_\\]/g, '\\$&')}":%`) as { ticker: string } | undefined;
 
-    if (held) {
-        return {
-            ticker: held.ticker,
-            tier: 'D',
-            subtitle: `${assetClass} · already in this account`,
-        };
+        if (held) {
+            return {
+                ticker: held.ticker,
+                tier: 'D',
+                subtitle: `${assetClass} · already in this account`,
+            };
+        }
     }
 
     // Tier C: per-account allowlist

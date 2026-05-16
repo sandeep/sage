@@ -9,6 +9,9 @@ interface Fill {
     qty_short: number;
     trade_price: number;
     multiplier: number;
+    commission: number;
+    exchange_fees: number;
+    nfa_fees: number;
 }
 
 interface OpenPosition {
@@ -16,29 +19,34 @@ interface OpenPosition {
     price: number;
     qty: number;
     multiplier: number;
+    unit_fees: number;
 }
 
 export async function reconstructFuturesTrades(): Promise<number> {
-    // Clear existing trades to avoid duplicates on re-run
     db.prepare('DELETE FROM alpha_futures_trades').run();
 
     const allFills = db.prepare(`
-        SELECT * FROM alpha_futures_fills 
-        ORDER BY trade_date ASC, id ASC
+        SELECT 
+            trade_date, symbol, contract_month, 
+            SUM(qty_long) as qty_long, 
+            SUM(qty_short) as qty_short, 
+            trade_price, multiplier,
+            SUM(commission) as commission,
+            SUM(exchange_fees) as exchange_fees,
+            SUM(nfa_fees) as nfa_fees
+        FROM alpha_futures_fills 
+        GROUP BY trade_date, symbol, contract_month, trade_price
+        ORDER BY trade_date ASC
     `).all() as Fill[];
 
-    console.log(`[Reconstruct:FUTURES] Fetched ${allFills.length} fills for book.`);
-
-    // Group fills by symbol and contract_month
     const groups: Record<string, Fill[]> = {};
     for (const fill of allFills) {
-        const symbol = fill.symbol || 'UNKNOWN';
-        const key = `${symbol}|${fill.contract_month}`;
+        const key = `${fill.symbol}|${fill.contract_month}`;
         if (!groups[key]) groups[key] = [];
         groups[key].push(fill);
     }
 
-    let totalTrades = 0;
+    let totalTradesCount = 0;
 
     for (const key in groups) {
         const fills = groups[key];
@@ -48,129 +56,43 @@ export async function reconstructFuturesTrades(): Promise<number> {
         const shortStack: OpenPosition[] = [];
 
         for (const fill of fills) {
-            let qtyLong = Math.abs(fill.qty_long);
-            let qtyShort = Math.abs(fill.qty_short);
+            let qtyL = fill.qty_long;
+            let qtyS = fill.qty_short;
+            const totalQ = (qtyL + qtyS) || 1;
+            const uFees = (fill.commission + fill.exchange_fees + fill.nfa_fees) / totalQ;
 
-            // Process LONG fills
-            while (qtyLong > 0) {
-                if (shortStack.length > 0) {
-                    // Match against existing SHORT positions
-                    const oldestShort = shortStack[0];
-                    const matchQty = Math.min(qtyLong, oldestShort.qty);
-                    
-                    recordTrade(
-                        symbol,
-                        contractMonth,
-                        'SHORT',
-                        oldestShort.trade_date,
-                        oldestShort.price,
-                        fill.trade_date,
-                        fill.trade_price,
-                        matchQty,
-                        fill.multiplier
-                    );
-                    totalTrades++;
-
-                    qtyLong -= matchQty;
-                    oldestShort.qty -= matchQty;
-                    if (oldestShort.qty === 0) shortStack.shift();
-                } else {
-                    // No SHORT positions to match, add to LONG stack
-                    longStack.push({
-                        trade_date: fill.trade_date,
-                        price: fill.trade_price,
-                        qty: qtyLong,
-                        multiplier: fill.multiplier
-                    });
-                    qtyLong = 0;
-                }
+            // MATCHING (FIFO)
+            while (qtyL > 0 && shortStack.length > 0) {
+                const oldest = shortStack[0];
+                const m = Math.min(qtyL, oldest.qty);
+                recordTrade(symbol, contractMonth, 'SHORT', oldest.trade_date, oldest.price, fill.trade_date, fill.trade_price, m, fill.multiplier, (oldest.unit_fees * m) + (uFees * m));
+                qtyL -= m; oldest.qty -= m; totalTradesCount++;
+                if (oldest.qty <= 0) shortStack.shift();
+            }
+            while (qtyS > 0 && longStack.length > 0) {
+                const oldest = longStack[0];
+                const m = Math.min(qtyS, oldest.qty);
+                recordTrade(symbol, contractMonth, 'LONG', oldest.trade_date, oldest.price, fill.trade_date, fill.trade_price, m, fill.multiplier, (oldest.unit_fees * m) + (uFees * m));
+                qtyS -= m; oldest.qty -= m; totalTradesCount++;
+                if (oldest.qty <= 0) longStack.shift();
             }
 
-            // Process SHORT fills
-            while (qtyShort > 0) {
-                if (longStack.length > 0) {
-                    // Match against existing LONG positions
-                    const oldestLong = longStack[0];
-                    const matchQty = Math.min(qtyShort, oldestLong.qty);
-                    
-                    recordTrade(
-                        symbol,
-                        contractMonth,
-                        'LONG',
-                        oldestLong.trade_date,
-                        oldestLong.price,
-                        fill.trade_date,
-                        fill.trade_price,
-                        matchQty,
-                        fill.multiplier
-                    );
-                    totalTrades++;
-
-                    qtyShort -= matchQty;
-                    oldestLong.qty -= matchQty;
-                    if (oldestLong.qty === 0) longStack.shift();
-                } else {
-                    // No LONG positions to match, add to SHORT stack
-                    shortStack.push({
-                        trade_date: fill.trade_date,
-                        price: fill.trade_price,
-                        qty: qtyShort,
-                        multiplier: fill.multiplier
-                    });
-                    qtyShort = 0;
-                }
-            }
+            // STACKING
+            if (qtyL > 0) longStack.push({ trade_date: fill.trade_date, price: fill.trade_price, qty: qtyL, multiplier: fill.multiplier, unit_fees: uFees });
+            if (qtyS > 0) shortStack.push({ trade_date: fill.trade_date, price: fill.trade_price, qty: qtyS, multiplier: fill.multiplier, unit_fees: uFees });
         }
     }
-
-    console.log(`[Reconstruct:FUTURES] Reconstruction complete. Total trades recorded: ${totalTrades}`);
-    return totalTrades;
+    return totalTradesCount;
 }
 
-function recordTrade(
-    symbol: string,
-    contract_month: string,
-    direction: 'LONG' | 'SHORT',
-    open_date: string,
-    open_price: number,
-    close_date: string,
-    close_price: number,
-    qty: number,
-    multiplier: number
-) {
-    let net_pnl: number;
-    if (direction === 'LONG') {
-        net_pnl = (close_price - open_price) * qty * multiplier;
-    } else {
-        net_pnl = (open_price - close_price) * qty * multiplier;
-    }
+function recordTrade(symbol: string, contract_month: string, direction: 'LONG' | 'SHORT', open_date: string, open_price: number, close_date: string, close_price: number, qty: number, multiplier: number, totalFees: number) {
+    let gross = (direction === 'LONG') ? (close_price - open_price) * qty * multiplier : (open_price - close_price) * qty * multiplier;
+    
+    // Calculate hold days
+    const start = new Date(open_date);
+    const end = new Date(close_date);
+    const holdDays = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
 
-    // NaN Protection
-    if (isNaN(net_pnl)) net_pnl = 0;
-
-    const hold_days_raw = Math.floor(
-        (new Date(close_date).getTime() - new Date(open_date).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    let hold_days = isNaN(hold_days_raw) ? 0 : hold_days_raw;
-    if (isNaN(hold_days)) hold_days = 0;
-
-    console.log(`[Reconstruct:FUTURES] Trade: ${symbol} ${contract_month} | Open: ${open_date} | Close: ${close_date} | P&L: ${net_pnl.toFixed(2)}`);
-
-    db.prepare(`
-        INSERT INTO alpha_futures_trades (
-            symbol, contract_month, direction, open_date, open_price, 
-            close_date, close_price, qty, net_pnl, hold_days
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-        symbol || 'UNKNOWN',
-        contract_month,
-        direction,
-        open_date,
-        open_price,
-        close_date,
-        close_price,
-        qty,
-        net_pnl,
-        hold_days
-    );
+    db.prepare(`INSERT INTO alpha_futures_trades (symbol, contract_month, direction, open_date, open_price, close_date, close_price, qty, net_pnl, hold_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(symbol, contract_month, direction, open_date, open_price, close_date, close_price, qty, gross - totalFees, holdDays);
 }
