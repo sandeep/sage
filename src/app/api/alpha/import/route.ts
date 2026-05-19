@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
                     try {
                         // Use isolated parser to bypass Next.js environment issues
                         firstPageText = await parsePdfIsolated(buffer);
+                        console.log(`[Import] PDF Isolated Parse successful for ${fileName}. Text sample: ${firstPageText.substring(0, 200)}`);
                     } catch (pdfErr: any) {
                         console.error(`[Import] PDF Isolated Parse failure for ${fileName}:`, pdfErr.message);
                         throw new Error(`PDF engine failure: ${pdfErr.message}`);
@@ -67,7 +68,15 @@ export async function POST(req: NextRequest) {
                     const success = await parseEquityStatement(firstPageText, fileName);
                     recordsParsed = success ? 1 : 0;
                 } else if (fileType === 'FUTURES_STATEMENT') {
-                    recordsParsed = await parseFuturesStatement(firstPageText, fileName);
+                    const summary: ParseSummary = await parseFuturesStatement(firstPageText, fileName);
+                    recordsParsed = summary.ingested;
+                    duplicatesCount = summary.duplicates;
+                    skippedCount = summary.skipped;
+
+                    if (recordsParsed === 0 && duplicatesCount > 0) {
+                        status = 'DUPLICATE_SKIPPED';
+                        errorMsg = `All ${duplicatesCount} fills already exist in ledger.`;
+                    }
                 } else if (fileType === 'APEX_LEGACY') {
                     status = 'DUPLICATE_SKIPPED';
                     errorMsg = 'Apex Clearing legacy format not supported';

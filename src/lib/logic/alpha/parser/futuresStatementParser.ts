@@ -1,5 +1,6 @@
-
 import db from '@/lib/db/client';
+
+import { ParseSummary } from './csvParser';
 
 /**
  * Parses Futures monthly statement PDF text.
@@ -8,10 +9,10 @@ import db from '@/lib/db/client';
  * 2. Trade Confirmation Summary (Commissions and Fees)
  * 3. Journal Entries (Deposits and Withdrawals)
  */
-export async function parseFuturesStatement(pdfText: string, sourceFileName: string): Promise<number> {
+export async function parseFuturesStatement(pdfText: string, sourceFileName: string): Promise<ParseSummary> {
     const lines = pdfText.split('\n').map(l => l.trim());
     let currentSection: 'NONE' | 'FILLS' | 'SUMMARY' | 'JOURNAL' = 'NONE';
-    let recordsParsed = 0;
+    const summary: ParseSummary = { ingested: 0, duplicates: 0, skipped: 0, totalRows: 0 };
 
     const insertFill = db.prepare(`
         INSERT INTO alpha_futures_fills (
@@ -39,7 +40,8 @@ export async function parseFuturesStatement(pdfText: string, sourceFileName: str
     const processedKeys = new Set<string>();
 
     db.transaction(() => {
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             const upper = line.toUpperCase();
             if (upper.includes('TRADE CONFIRMATIONS')) { currentSection = 'FILLS'; continue; }
             if (upper.includes('TRADE CONFIRMATION SUMMARY')) { currentSection = 'SUMMARY'; continue; }
@@ -47,16 +49,17 @@ export async function parseFuturesStatement(pdfText: string, sourceFileName: str
             if (upper.includes('OPEN POSITIONS')) { currentSection = 'NONE'; continue; }
 
             if (currentSection === 'FILLS') {
-                const fillRegex = /^(\d{4}-\d{2}-\d{2})\s+([A-Z]+)\s+([\d,.]+)\s+([\d,.]+)\s+(?:[A-Z]+\s+)?(\w+)\s+(\d{4})\s+(\d{1,2})\s+\w+\s+[\d-]+\s+([\d,.]+)/;
+                const fillRegex = /^(\d{4}-\d{2}-\d{2})\s+([A-Z]{2})\s+([\d,.]+)\s+([\d,.]+)\s+([A-Z]*\s+)?([A-Z/0-9]+)\s+(\d{4})\s+(\d{1,2})\s+\w+\s+[\d-]+\s+([\d,.]+)/;
                 const match = line.match(fillRegex);
                 if (match) {
+                    summary.totalRows++;
                     const tradeDate = match[1];
                     const qtyLong = parseFloat(match[3].replace(/,/g, ''));
                     const qtyShort = parseFloat(match[4].replace(/,/g, ''));
-                    const symbol = match[5];
-                    const contractYear = match[6];
-                    const contractMonthRaw = match[7];
-                    const tradePrice = parseFloat(match[8].replace(/,/g, ''));
+                    const symbol = match[6];
+                    const contractYear = match[7];
+                    const contractMonthRaw = match[8];
+                    const tradePrice = parseFloat(match[9].replace(/,/g, ''));
                     const contractMonth = `${contractYear}-${contractMonthRaw.padStart(2, '0')}`;
                     
                     const key = `${tradeDate}|${symbol}|${contractMonth}|${tradePrice}|${qtyLong}|${qtyShort}`;
@@ -71,35 +74,49 @@ export async function parseFuturesStatement(pdfText: string, sourceFileName: str
                     insertFill.run(sourceFileName, tradeDate, symbol, contractMonth, qtyLong, qtyShort, tradePrice, multiplierCache[symbol]);
                     
                     if (!existing && !processedKeys.has(key)) {
-                        recordsParsed++;
+                        summary.ingested++;
                         processedKeys.add(key);
+                    } else if (existing) {
+                        summary.duplicates++;
                     }
                 }
             } else if (currentSection === 'SUMMARY') {
-                // Regex for Summary table rows
-                const summaryRegex = /^(\d{4}-\d{2}-\d{2})\s+([A-Z]+)\s+[\d,.]+\s+[\d,.]+\s+[\d,.]*\s*[\d,.]*\s*(\w+)\s+.*?\s+(-?[\d,.]+)\s+(-?[\d,.]+)\s+(-?[\d,.]+)\s+(-?[\d,.]+)\s+USD/;
-                const match = line.match(summaryRegex);
-                if (match) {
-                    rowsToProcess.push({
-                        tradeDate: match[1],
-                        symbol: match[3],
-                        comm: Math.abs(parseFloat(match[4])),
-                        exch: Math.abs(parseFloat(match[5])),
-                        nfa: Math.abs(parseFloat(match[6]))
-                    });
+                if (line.includes('USD')) {
+                    let tradeDate = null;
+                    for (let j = i; j >= Math.max(0, i - 5); j--) {
+                        const dateMatch = lines[j].match(/(\d{4}-\d{2}-\d{2})/);
+                        if (dateMatch) { tradeDate = dateMatch[1]; break; }
+                        const part1 = lines[j].match(/^(\d{4}-)$/);
+                        const part2 = lines[j+1]?.match(/^(\d{2}-\d{2})/);
+                        if (part1 && part2) { tradeDate = part1[1] + part2[1]; break; }
+                    }
+
+                    if (tradeDate) {
+                        const numbers = line.match(/-?\d+\.\d+/g);
+                        if (numbers && numbers.length >= 4) {
+                            const n = numbers.length;
+                            const comm = Math.abs(parseFloat(numbers[n-4]));
+                            const exch = Math.abs(parseFloat(numbers[n-3]));
+                            const nfa  = Math.abs(parseFloat(numbers[n-2]));
+                            
+                            const symbolMatch = line.match(/([A-Z]{2,5})\s+([A-Z]{2,5})?/);
+                            const symbol = symbolMatch ? symbolMatch[1] : null;
+
+                            if (symbol) {
+                                rowsToProcess.push({ tradeDate, symbol, comm, exch, nfa });
+                            }
+                        }
+                    }
                 }
             } else if (currentSection === 'JOURNAL') {
-                const match = line.match(/^(\d{4}-\d{2}-\d{2})\s+\S+\s+(Deposit|Withdrawal|Trade Adjustment)\s+\w+\s+(-?[\d,.]+)/);
+                const journalRegex = /^(\d{4}-\d{2}-\d{2})\s+\S+\s+(Deposit|Withdrawal|Trade Adjustment)\s+\w+\s+(-?[\d,.]+)/;
+                const match = line.match(journalRegex);
                 if (match) {
-                    const tradeDate = match[1];
-                    const desc = match[2];
-                    const amount = parseFloat(match[3].replace(/,/g, ''));
-                    insertJournal.run(tradeDate, desc, amount, sourceFileName);
+                    insertJournal.run(match[1], match[2], parseFloat(match[3].replace(/,/g, '')), sourceFileName);
                 }
             }
         }
 
-        // Pass 2: Distribute summary costs
         for (const row of rowsToProcess) {
             const totalQtyRow = db.prepare("SELECT SUM(qty_long + qty_short) as q FROM alpha_futures_fills WHERE trade_date = ? AND symbol = ?").get(row.tradeDate, row.symbol) as any;
             const q = totalQtyRow?.q || 1;
@@ -107,5 +124,5 @@ export async function parseFuturesStatement(pdfText: string, sourceFileName: str
         }
     })();
 
-    return recordsParsed;
+    return summary;
 }
