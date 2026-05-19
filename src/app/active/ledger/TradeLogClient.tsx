@@ -83,8 +83,6 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
     const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
     const fmtUSD = (v: number) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    const isSettlementBasis = activeTab === 'Futures' && data.some(d => d.instrument === 'Futures Sweep');
-
     return (
         <div className="page-container ui-page-spacing">
             {/* Header */}
@@ -145,7 +143,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                     </FloatingTooltip>
 
                     <FloatingTooltip title="Expected Value" content="Average dollar outcome per trade. Physically projects the expected gain/loss if you were to repeat this strategy.">
-                        <SummaryTile label="Expected Value" value={fmtUSD(stats.expectedValue)} sub={isSettlementBasis ? '/ day' : '/ trade'} />
+                        <SummaryTile label="Expected Value" value={fmtUSD(stats.expectedValue)} sub={activeTab === 'Futures' ? '/ trade' : '/ trade'} />
                     </FloatingTooltip>
                 </div>
             )}
@@ -157,9 +155,7 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                         <tr className="bg-zinc-900/50 border-b border-zinc-900">
                             <SortHeader label="Date" field="date" current={sortField} dir={sortDir} onSort={handleSort} />
                             <SortHeader label="Instrument" field="instrument" current={sortField} dir={sortDir} onSort={handleSort} />
-                            {!isSettlementBasis && (
-                                <SortHeader label="Side" field="direction" current={sortField} dir={sortDir} onSort={handleSort} />
-                            )}
+                            <SortHeader label="Side" field="direction" current={sortField} dir={sortDir} onSort={handleSort} />
                             <SortHeader label="Entry" field="entry" current={sortField} dir={sortDir} onSort={handleSort} align="right" />
                             <SortHeader label="Exit" field="exit" current={sortField} dir={sortDir} onSort={handleSort} align="right" />
                             <SortHeader label="Hold" field="hold" current={sortField} dir={sortDir} onSort={handleSort} align="right" />
@@ -182,18 +178,21 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                 </tr>
                                 
                                 {trades.map((trade, i) => {
-                                    const rowId = `${trade.date}-${trade.instrument}`;
+                                    const rowId = `${trade.date}-${trade.instrument}-${i}`;
                                     const isExpanded = expandedRows.has(rowId);
+                                    const canExpand = activeTab === 'Futures';
                                     
                                     return (
                                         <React.Fragment key={i}>
                                             <tr 
-                                                className={`transition-colors group ${isSettlementBasis ? 'cursor-pointer hover:bg-zinc-900/40' : 'hover:bg-zinc-900/20'}`}
-                                                onClick={() => isSettlementBasis && toggleRow(rowId)}
+                                                className={`transition-colors group ${canExpand ? 'cursor-pointer hover:bg-zinc-900/40' : 'hover:bg-zinc-900/20'}`}
+                                                onClick={() => canExpand && toggleRow(rowId)}
                                             >
                                                 <td className="px-6 py-3 ui-value !text-zinc-400 font-bold whitespace-nowrap pl-10 tabular-nums">
-                                                    {isSettlementBasis && (
+                                                    {canExpand ? (
                                                         <span className="inline-block w-4 ui-caption !text-zinc-500">{isExpanded ? '▼' : '▶'}</span>
+                                                    ) : (
+                                                        <span className="inline-block w-4"></span>
                                                     )}
                                                     {trade.date}
                                                 </td>
@@ -205,15 +204,13 @@ export default function TradeLogClient({ initialFutures, initialOptions, initial
                                                         </div>
                                                     )}
                                                 </td>
-                                                {!isSettlementBasis && (
-                                                    <td className="px-6 py-3">
-                                                        <span className={`px-2 py-0.5 rounded-[2px] ui-label tracking-tighter ${
-                                                            trade.direction === 'LONG' ? 'bg-zinc-800 text-zinc-200' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                                        }`}>
-                                                            {trade.direction}
-                                                        </span>
-                                                    </td>
-                                                )}
+                                                <td className="px-6 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-[2px] ui-label tracking-tighter ${
+                                                        trade.direction === 'LONG' || trade.direction === 'GAIN' ? 'bg-zinc-800 text-zinc-200' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                                    }`}>
+                                                        {trade.direction}
+                                                    </span>
+                                                </td>
                                                 <td className="px-6 py-3 ui-value !text-zinc-400 text-right tabular-nums">
                                                     {trade.entry > 0 ? trade.entry.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                                                 </td>

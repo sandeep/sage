@@ -460,6 +460,7 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
         const trades = db.prepare(`
             SELECT 
                 close_date as date,
+                open_date as openDate,
                 symbol || ' ' || contract_month as instrument,
                 direction,
                 open_price as entry,
@@ -473,11 +474,15 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
             FROM alpha_futures_trades
             WHERE 1=1 ${dateFilterClose}
             ORDER BY close_date DESC
-        `).all(...dateFilterParams) as TradeLogEntry[];
+        `).all(...dateFilterParams) as any[];
 
+        // Sweeps should ONLY be shown for dates where we have NO reconstructed trades
+        const tradeDates = new Set(trades.map(t => t.date));
+        
         const sweeps = db.prepare(`
             SELECT 
                 activity_date as date,
+                null as openDate,
                 'Futures Sweep' as instrument,
                 CASE WHEN amount >= 0 THEN 'GAIN' ELSE 'LOSS' END as direction,
                 0 as entry,
@@ -489,8 +494,10 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
             WHERE trans_code = 'FUTSWP' ${dateFilterActivity}
             ORDER BY activity_date DESC
         `).all(...dateFilterParams) as TradeLogEntry[];
+
+        const fallbackSweeps = sweeps.filter(s => !tradeDates.has(s.date));
         
-        // Enhance sweeps with fills (evidence)
+        // Enhance ALL rows with fills (evidence)
         const fills = db.prepare(`
             SELECT 
                 trade_date as date,
@@ -503,18 +510,31 @@ export async function getTradeLog(type: 'Futures' | 'Options' | 'Equities', star
             WHERE 1=1 ${dateFilterTradeDate}
         `).all(...dateFilterParams) as any[];
 
-        const fillMap = new Map<string, any[]>();
+        const fillMapByDate = new Map<string, any[]>();
         fills.forEach(f => {
-            if (!fillMap.has(f.date)) fillMap.set(f.date, []);
-            fillMap.get(f.date)!.push(f);
+            if (!fillMapByDate.has(f.date)) fillMapByDate.set(f.date, []);
+            fillMapByDate.get(f.date)!.push(f);
         });
 
-        const enhancedSweeps = sweeps.map(s => ({
+        // Attach fills to trades (forensic match)
+        const enhancedTrades = trades.map(t => {
+            const symbol = t.instrument.split(' ')[0];
+            return {
+                ...t,
+                fills: fills.filter(f => 
+                    f.symbol === symbol && 
+                    ((f.date === t.openDate && f.price === t.entry) || (f.date === t.date && f.price === t.exit))
+                )
+            };
+        });
+
+        // Attach fills to fallback sweeps (daily match)
+        const enhancedSweeps = fallbackSweeps.map(s => ({
             ...s,
-            fills: fillMap.get(s.date) || []
+            fills: fillMapByDate.get(s.date) || []
         }));
         
-        return [...trades, ...enhancedSweeps].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return [...enhancedTrades, ...enhancedSweeps].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
 
     if (type === 'Options') {
